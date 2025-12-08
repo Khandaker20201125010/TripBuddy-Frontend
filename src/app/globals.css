@@ -3,6 +3,17 @@
 
 @custom-variant dark (&:is(.dark *));
 
+body {
+  font-family: var(--font-dm-sans), system-ui, sans-serif;
+  background-color: var(--color-warm-white);
+  color: var(--color-charcoal);
+}
+
+/* Use Fraunces for headings or display text */
+.font-display {
+  font-family: var(--font-fraunces), Georgia, serif;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -76,6 +87,22 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --color-warm-white: #fff7f0;
+  --color-sand-dark: #d6c7b5;
+  --color-charcoal: #333;
+  --color-coral: #ff6b5a;
+  --color-charcoal: #333333;
+  --color-coral: #ff6b5a;
+    --color-coral: #FF6B4A;
+  --color-coral-light: #FF8A65;
+  --color-sunset: #FFB347;
+  --color-blue: #2D5F8B;
+  --color-blue-light: #4A90B8;
+  --color-teal: #1A535C;
+  --color-sand: #F5F0E8;
+  --color-sand-dark: #E8E0D5;
+  --color-charcoal: #2D3436;
+  --color-warm-white: #FDFBF7;
 }
 
 .dark {
@@ -119,4 +146,20 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+.gradient-sunset {
+  background: linear-gradient(135deg, var(--color-coral) 0%, var(--color-sunset) 100%);
+}
+
+.gradient-ocean {
+  background: linear-gradient(135deg, var(--color-teal) 0%, var(--color-blue) 100%);
+}
+
+/* Text gradient */
+.text-gradient-sunset {
+  background: linear-gradient(135deg, var(--color-coral) 0%, var(--color-sunset) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
