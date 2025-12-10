@@ -1,20 +1,32 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MapPin, Menu, X } from 'lucide-react'
 import { Button } from '../ui/button'
 
 const navLinks = [
-    { name: 'Explore Travelers', href: '#explore-travelers' },
+    { name: 'Explore Travelers', href: '/explore-travelers' },
     { name: 'Find Travel Buddy', href: '#find-travel-buddy' },
 ]
 
 export function Navbar() {
     const [isOpen, setIsOpen] = useState(false)
+    const [scrolled, setScrolled] = useState(false)
+
+    useEffect(() => {
+        const handler = () => setScrolled(window.scrollY > 10)
+        window.addEventListener("scroll", handler)
+        return () => window.removeEventListener("scroll", handler)
+    }, [])
 
     return (
-        <nav className="fixed top-0 left-0 right-0 z-50 bg-var(--color-warm-white)/80 backdrop-blur-lg border-b border-(--color-sand-dark)">
+        <nav
+            className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled
+                    ? "bg-white/60 backdrop-blur-lg border-b border-stone-200"
+                    : "bg-transparent backdrop-blur-0 border-transparent"
+                }`}
+        >
             <div className="max-w-7xl mx-auto px-6">
                 <div className="flex items-center justify-between h-20">
 
@@ -43,7 +55,7 @@ export function Navbar() {
 
                     {/* Desktop CTA */}
                     <div className="hidden md:flex items-center gap-4">
-                       
+
                         <button className="cursor-pointer px-6 py-2.5 gradient-sunset text-white font-semibold rounded-full shadow-md shadow-(--color-coral)/20 hover:shadow-lg hover:shadow-(--color-coral)/30 transition-all duration-300">
                             Log In
                         </button>
@@ -85,7 +97,7 @@ export function Navbar() {
                                 <Button variant="gradient" size="default">
                                     Log In
                                 </Button>
-                             
+
                             </div>
                         </div>
                     </motion.div>
