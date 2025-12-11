@@ -1,76 +1,102 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import { useActionState, useEffect } from "react";
+
+import { useActionState, useEffect, useState } from "react";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "../ui/field";
-import { toast } from "sonner";
+import Swal from "sweetalert2";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
-import InputFieldError from "../shared/InputFieldError";
 import { loginTraveler } from "@/services/auth/loginTravler";
-
+import { Eye, EyeOff } from "lucide-react";
 
 const LoginForm = ({ redirect }: { redirect?: string }) => {
   const [state, formAction, isPending] = useActionState(loginTraveler, null);
-  console.log("LoginForm state:", state);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const getFieldError = (fieldName: string) => {
+    if (state && Array.isArray(state.errors)) {
+      const error = state.errors.find((err: any) => err.field === fieldName);
+      return error?.message || null;
+    }
+    return null;
+  };
+
+  const togglePassword = () => setShowPassword(!showPassword);
 
   useEffect(() => {
-    if (state && !state.success && state.message) {
-      toast.error(state.message);
+    if (!state) return;
+
+    console.log("Login State:", state);
+
+    if (state.success) {
+      Swal.fire({
+        title: "Login Successful!",
+        icon: "success",
+        timer: 1200,
+        showConfirmButton: false,
+        timerProgressBar: true,
+      });
+
+      if (state.redirect) {
+        setTimeout(() => {
+          window.location.href = state.redirect;
+        }, 1200);
+      }
+    }
+
+    if (state.error) {
+      Swal.fire({
+        title: "Login Failed",
+        text: state.error,
+        icon: "error",
+        confirmButtonText: "OK",
+      });
     }
   }, [state]);
 
   return (
-    <form action={formAction}>
-      {redirect && <input type="hidden" name="redirect" value={redirect} />}
+    <form action={formAction} className="space-y-4">
+      <input type="hidden" name="redirect" value={redirect || window.location.pathname} />
+
       <FieldGroup>
-        <div className="grid grid-cols-1 gap-4">
-          {/* Email */}
-          <Field>
-            <FieldLabel htmlFor="email">Email</FieldLabel>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="m@example.com"
-              //   required
-            />
+        {/* Email */}
+        <Field>
+          <FieldLabel htmlFor="email">Email</FieldLabel>
+          <Input id="email" name="email" type="email" placeholder="m@example.com" />
+          {getFieldError("email") && (
+            <FieldDescription className="text-red-600">{getFieldError("email")}</FieldDescription>
+          )}
+        </Field>
 
-            <InputFieldError field="email" state={state} />
-          </Field>
-
-          {/* Password */}
-          <Field>
-            <FieldLabel htmlFor="password">Password</FieldLabel>
+        {/* Password */}
+        <Field>
+          <FieldLabel htmlFor="password">Password</FieldLabel>
+          <div className="relative">
             <Input
               id="password"
               name="password"
-              type="password"
+              type={showPassword ? "text" : "password"}
               placeholder="Enter your password"
-              //   required
             />
-            <InputFieldError field="password" state={state} />
-          </Field>
-        </div>
-        <FieldGroup className="mt-4">
-          <Field>
-            <Button type="submit" disabled={isPending}>
-              {isPending ? "Logging in..." : "Login"}
-            </Button>
+            <button
+              type="button"
+              onClick={togglePassword}
+              className="absolute cursor-pointer right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+            >
+              {showPassword ? <Eye className="text-orange-400" /> : <EyeOff  className="text-orange-400"/>}
+           
+            </button>
+          </div>
+          {getFieldError("password") && (
+            <FieldDescription className="text-red-600">{getFieldError("password")}</FieldDescription>
+          )}
+        </Field>
 
-            <FieldDescription className="px-6 text-center">
-              Don&apos;t have an account?{" "}
-              <a href="/register" className="text-blue-600 hover:underline">
-                Sign up
-              </a>
-            </FieldDescription>
-            <FieldDescription className="px-6 text-center">
-              <a
-                href="/forget-password"
-                className="text-blue-600 hover:underline"
-              >
-                Forgot password?
-              </a>
-            </FieldDescription>
-          </Field>
+        {/* Submit */}
+        <FieldGroup className="mt-4">
+          <Button className="cursor-pointer" variant={"gradient"} type="submit" disabled={isPending}>
+            {isPending ? "Logging in..." : "Login"}
+          </Button>
         </FieldGroup>
       </FieldGroup>
     </form>

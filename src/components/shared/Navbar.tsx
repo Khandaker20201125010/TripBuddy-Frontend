@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MapPin, Menu, X } from 'lucide-react'
 import { Button } from '../ui/button'
+import Link from 'next/link'
 
 const navLinks = [
     { name: 'Explore Travelers', href: '/explore-travelers' },
@@ -56,9 +57,10 @@ export function Navbar() {
                     {/* Desktop CTA */}
                     <div className="hidden md:flex items-center gap-4">
 
-                        <button className="cursor-pointer px-6 py-2.5 gradient-sunset text-white font-semibold rounded-full shadow-md shadow-(--color-coral)/20 hover:shadow-lg hover:shadow-(--color-coral)/30 transition-all duration-300">
+                      <Link href="/login">  <button className="cursor-pointer px-6 py-2.5 gradient-sunset text-white font-semibold rounded-full shadow-md shadow-(--color-coral)/20 hover:shadow-lg hover:shadow-(--color-coral)/30 transition-all duration-300">
                             Log In
                         </button>
+                        </Link>
                     </div>
 
                     {/* Mobile Menu Button */}
@@ -94,9 +96,11 @@ export function Navbar() {
                             ))}
 
                             <div className="pt-4 border-t border-(--color-sand-dark) space-y-3">
+                               <Link href="/login">
                                 <Button variant="gradient" size="default">
                                     Log In
                                 </Button>
+                                </Link>
 
                             </div>
                         </div>

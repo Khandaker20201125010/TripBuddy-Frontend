@@ -1,8 +1,40 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-"use server"
+"use server";
 
-export const registerTraveler = async (currentState: any, formData: FormData): Promise<any> => {
+import { success, z } from "zod";
+const registerValidationZodSchema = z.object({
+  name: z.string().min(1, { message: "Name is required" }),
+  email: z.email({ message: "Email is required" }),
+  password: z
+    .string()
+    .min(6, {
+      message: "Password is required and must be at least 6 characters",
+    }),
+});
+export const registerTraveler = async (
+  currentState: any,
+  formData: FormData
+): Promise<any> => {
   try {
+    const validatedField = {
+      name: formData.get("name"),
+      email: formData.get("email"),
+      password: formData.get("password"),
+    };
+    const validationResult =
+      registerValidationZodSchema.safeParse(validatedField);
+      if (!validationResult.success) {
+       return{
+         success: false,
+         errors: validationResult.error.issues.map((issue) => {
+            return{
+              field: issue.path[0],
+              message: issue.message,
+            }
+         })
+       }
+
+      }
     const name = formData.get("name");
     const email = formData.get("email");
     const password = formData.get("password");
@@ -15,10 +47,13 @@ export const registerTraveler = async (currentState: any, formData: FormData): P
     newFormData.append("email", email as string);
     newFormData.append("password", password as string);
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/register`, {
-      method: "POST",
-      body: newFormData,
-    });
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/user/register`,
+      {
+        method: "POST",
+        body: newFormData,
+      }
+    );
 
     return await res.json();
   } catch (err) {

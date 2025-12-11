@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
@@ -18,6 +19,16 @@ const RegisterForm = () => {
     const file = event.target.files?.[0];
     if (file) setPreview(URL.createObjectURL(file));
   };
+
+    const getFieldError = (fieldName: string) => {
+    if (state && Array.isArray(state.errors)) {
+      const error = state.errors.find((err: any) => err.field === fieldName);
+      return error?.message || null;
+    }
+    return null;
+  };
+  console.log(state);
+
 
   // Show toast on registration error
   useEffect(() => {
@@ -81,21 +92,36 @@ const RegisterForm = () => {
           <Field>
             <FieldLabel htmlFor="name">Full Name</FieldLabel>
             <Input id="name" name="name" type="text" placeholder="John Doe" />
-            <InputFieldError field="name" state={state} />
+                 {getFieldError("name") && (
+              <FieldDescription className="text-red-600">
+                {getFieldError("name")}
+              </FieldDescription>
+            )}
+
           </Field>
 
           {/* Email */}
           <Field>
             <FieldLabel htmlFor="email">Email</FieldLabel>
             <Input id="email" name="email" type="email" placeholder="you@example.com" />
-            <InputFieldError field="email" state={state} />
+                {getFieldError("email") && (
+              <FieldDescription className="text-red-600">
+                {getFieldError("email")}
+              </FieldDescription>
+            )}
+
           </Field>
 
           {/* Password */}
           <Field>
             <FieldLabel htmlFor="password">Password</FieldLabel>
             <Input id="password" name="password" type="password" placeholder="••••••••" />
-            <InputFieldError field="password" state={state} />
+               {getFieldError("password") && (
+              <FieldDescription className="text-red-600">
+                {getFieldError("password")}
+              </FieldDescription>
+            )}
+
           </Field>
         </div>
       </FieldGroup>
