@@ -36,6 +36,7 @@ export const loginTraveler = async (_currentState: any, formData: any) => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(loginData),
+       credentials: "include",
     });
 
     const result = await res.json();

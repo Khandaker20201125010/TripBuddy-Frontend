@@ -33,10 +33,10 @@ export function TravelerCard({ traveler, index = 0 }: TravelerCardProps) {
             alt="Cover"
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-t from-black/20 to-transparent" />  
         </div>
 
-        <CardContent className="relative pt-12 pb-4 flex-grow">
+        <CardContent className="relative pt-12 pb-4 grow">
           <div className="absolute -top-10 left-6">
             <Avatar className="h-20 w-20 border-4 border-white shadow-sm">
               <AvatarImage src={traveler.avatar || '/default-avatar.png'} alt={traveler.name} />

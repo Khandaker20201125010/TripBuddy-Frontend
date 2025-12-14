@@ -7,13 +7,15 @@ import {
   UserRole,
 } from "./services/auth/auth-utils";
 import jwt, { JwtPayload } from "jsonwebtoken";
+import { getCookie } from "./services/auth/tokenHandlers";
 
 // This function can be marked `async` if using `await` inside
 export async function proxy(request: NextRequest) {
   const cookieStore = await cookies();
   const pathname = request.nextUrl.pathname;
 
-  const accessToken = request.cookies.get("accessToken")?.value || null;
+  // const accessToken = request.cookies.get("accessToken")?.value || null;
+   const accessToken = await getCookie("accessToken") || null;
 
   let userRole: UserRole | null = null;
   if (accessToken) {
@@ -30,12 +32,7 @@ export async function proxy(request: NextRequest) {
 
     userRole = verifiedToken.role;
   }
-
   const routerOwner = getRouteOwner(pathname);
-  //path = /doctor/appointments => "DOCTOR"
-  //path = /my-profile => "COMMON"
-  //path = /login => null
-
   const isAuth = isAuthRoute(pathname);
 
   // Rule 1 : User is logged in and trying to access auth route. Redirect to default dashboard

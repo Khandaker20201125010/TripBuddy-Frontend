@@ -8,8 +8,11 @@ import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { loginTraveler } from "@/services/auth/loginTravler";
 import { Eye, EyeOff } from "lucide-react";
-
+import { FcGoogle } from 'react-icons/fc';
+import { signIn } from "next-auth/react";
+import { usePathname } from "next/navigation";
 const LoginForm = ({ redirect }: { redirect?: string }) => {
+  const pathname = usePathname();
   const [state, formAction, isPending] = useActionState(loginTraveler, null);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -56,7 +59,12 @@ const LoginForm = ({ redirect }: { redirect?: string }) => {
 
   return (
     <form action={formAction} className="space-y-4">
-      <input type="hidden" name="redirect" value={redirect || window.location.pathname} />
+
+      <input
+        type="hidden"
+        name="redirect"
+        value={redirect || pathname}
+      />
 
       <FieldGroup>
         {/* Email */}
@@ -83,8 +91,8 @@ const LoginForm = ({ redirect }: { redirect?: string }) => {
               onClick={togglePassword}
               className="absolute cursor-pointer right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
             >
-              {showPassword ? <Eye className="text-orange-400" /> : <EyeOff  className="text-orange-400"/>}
-           
+              {showPassword ? <Eye className="text-orange-400" /> : <EyeOff className="text-orange-400" />}
+
             </button>
           </div>
           {getFieldError("password") && (
@@ -98,6 +106,19 @@ const LoginForm = ({ redirect }: { redirect?: string }) => {
             {isPending ? "Logging in..." : "Login"}
           </Button>
         </FieldGroup>
+        <div className="h-2 ">
+          <h1 className="flex items-center justify-center font-bold text-lg ">or</h1>
+        </div>
+        <div className="w-full">
+          <Button type="button" variant="gradient" onClick={() =>
+            signIn("google", {
+              callbackUrl: "/",
+            })
+          } className="flex items-center justify-center h-9 px-3  w-full ">
+            <FcGoogle size={40} />
+          </Button>
+        </div>
+
       </FieldGroup>
     </form>
   );

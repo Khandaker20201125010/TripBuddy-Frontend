@@ -18,7 +18,7 @@ const buttonVariants = cva(
         ghost: "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
         link: "text-primary underline-offset-4 hover:underline",
         gradient:
-          "gradient-sunset text-white shadow-lg shadow-[var(--color-coral)]/30 hover:shadow-xl hover:shadow-[var(--color-coral)]/40 px-6 py-3", // ✅ your gradient-sunset design
+          "cursor-pointer gradient-sunset text-white shadow-lg shadow-[var(--color-coral)]/30 hover:shadow-xl hover:shadow-[var(--color-coral)]/40 px-6 py-3", // ✅ your gradient-sunset design
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",

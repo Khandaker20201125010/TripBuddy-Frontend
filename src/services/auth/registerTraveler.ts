@@ -1,15 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use server";
 
-import { success, z } from "zod";
+import { z } from "zod";
+import { loginTraveler } from "./loginTravler";
 const registerValidationZodSchema = z.object({
   name: z.string().min(1, { message: "Name is required" }),
   email: z.email({ message: "Email is required" }),
-  password: z
-    .string()
-    .min(6, {
-      message: "Password is required and must be at least 6 characters",
-    }),
+  password: z.string().min(6, {
+    message: "Password is required and must be at least 6 characters",
+  }),
 });
 export const registerTraveler = async (
   currentState: any,
@@ -21,32 +20,36 @@ export const registerTraveler = async (
       email: formData.get("email"),
       password: formData.get("password"),
     };
+
     const validationResult =
       registerValidationZodSchema.safeParse(validatedField);
-      if (!validationResult.success) {
-       return{
-         success: false,
-         errors: validationResult.error.issues.map((issue) => {
-            return{
-              field: issue.path[0],
-              message: issue.message,
-            }
-         })
-       }
 
-      }
-    const name = formData.get("name");
-    const email = formData.get("email");
-    const password = formData.get("password");
+    if (!validationResult.success) {
+      return {
+        success: false,
+        errors: validationResult.error.issues.map((issue) => ({
+          field: issue.path[0],
+          message: issue.message,
+        })),
+      };
+    }
+
+    // Prepare form data
+    const newFormData = new FormData();
     const file = formData.get("file") as File | null;
 
-    const newFormData = new FormData();
+    if (file && file.size > 0) {
+      newFormData.append("file", file);
+    } else {
+      // Send empty string so Multer won't treat as a file
+      newFormData.append("file", "");
+    }
 
-    if (file) newFormData.append("file", file);
-    newFormData.append("name", name as string);
-    newFormData.append("email", email as string);
-    newFormData.append("password", password as string);
+    newFormData.append("name", validatedField.name as string);
+    newFormData.append("email", validatedField.email as string);
+    newFormData.append("password", validatedField.password as string);
 
+    // Register
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/user/register`,
       {
@@ -55,9 +58,28 @@ export const registerTraveler = async (
       }
     );
 
-    return await res.json();
-  } catch (err) {
+    const result = await res.json();
+
+    if (!res.ok || !result.success) {
+      return {
+        success: false,
+        error:
+          typeof result.message === "string"
+            ? result.message
+            : JSON.stringify(result.message),
+      };
+    }
+
+    // Auto login
+    const loginResult = await loginTraveler(currentState, formData);
+
+    return {
+      success: true,
+      redirect: loginResult.redirect,
+      role: loginResult.role,
+    };
+  } catch (err: any) {
     console.log(err);
-    return { error: "Registration failed" };
+    return { success: false, error: "Registration failed" };
   }
 };

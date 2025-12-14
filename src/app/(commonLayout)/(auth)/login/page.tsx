@@ -11,18 +11,7 @@ const LoginPage = async ({
 
     return (
         <div className="min-h-screen flex flex-col md:flex-row">
-            {/* Left side full-screen image */}
-            <div className="relative w-full md:w-1/2 h-screen">
-                <Image
-                    src={loginsinup}
-                    alt="Login Illustration"
-                    fill
-                    className="object-cover"
-                    priority
-                />
-            </div>
-
-            {/* Right side login form */}
+                  {/* Left side full-screen image */}
             <div className="flex w-full md:w-1/2 items-center justify-center bg-gray-50 p-8">
                 <div className="w-full max-w-md bg-white rounded-xl shadow-xl p-8">
                     <h1 className="text-3xl font-bold mb-6 text-center text-gray-800">
@@ -42,6 +31,20 @@ const LoginPage = async ({
                     </p>
                 </div>
             </div>
+      
+            <div className="relative w-full md:w-1/2 h-screen">
+                <Image
+                    src={loginsinup}
+                    alt="Login Illustration"
+                    width={800}
+                    height={600}
+                    className="object-cover"
+                    priority
+                />
+            </div>
+
+       
+
         </div>
     );
 };
