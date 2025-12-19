@@ -1,5 +1,6 @@
-import { cookies } from "next/headers";
+
 import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt"; // Import this
 import {
   getDefaultDashboardRoute,
   getRouteOwner,
@@ -9,66 +10,98 @@ import {
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { getCookie } from "./services/auth/tokenHandlers";
 
-// This function can be marked `async` if using `await` inside
 export async function proxy(request: NextRequest) {
-  const cookieStore = await cookies();
   const pathname = request.nextUrl.pathname;
 
-  // const accessToken = request.cookies.get("accessToken")?.value || null;
-   const accessToken = await getCookie("accessToken") || null;
-
+  // 1. Initialize Role and Auth Status
   let userRole: UserRole | null = null;
+  let isAuthenticated = false;
+
+  // ----------------------------------------------------------------
+  // STRATEGY A: Check Custom Cookie (Email/Password Login)
+  // ----------------------------------------------------------------
+  const accessToken = await getCookie("accessToken");
+
   if (accessToken) {
-    const verifiedToken: JwtPayload | string = jwt.verify(
-      accessToken,
-      process.env.ACCESS_TOKEN_SECRET as string
-    );
+    try {
+      const verifiedToken = jwt.verify(
+        accessToken,
+        process.env.ACCESS_TOKEN_SECRET as string
+      ) as JwtPayload | string;
 
-    if (typeof verifiedToken === "string") {
-      cookieStore.delete("accessToken");
-      cookieStore.delete("refreshToken");
-      return NextResponse.redirect(new URL("/login", request.url));
+      if (typeof verifiedToken !== "string") {
+        userRole = verifiedToken.role as UserRole;
+        isAuthenticated = true;
+      }
+    } catch (error) {
+      // Token is invalid/expired
+      console.error("Invalid custom access token", error);
     }
-
-    userRole = verifiedToken.role;
   }
-  const routerOwner = getRouteOwner(pathname);
+
+  // ----------------------------------------------------------------
+  // STRATEGY B: Check NextAuth Session (Google Login)
+  // Only check if not already authenticated via custom cookie
+  // ----------------------------------------------------------------
+  if (!isAuthenticated) {
+    const nextAuthToken = await getToken({
+      req: request,
+      secret: process.env.AUTH_SECRET,
+    });
+
+    if (nextAuthToken) {
+      userRole = nextAuthToken.role as UserRole;
+      isAuthenticated = true;
+    }
+  }
+
+  // ----------------------------------------------------------------
+  // ROUTE PROTECTION LOGIC
+  // ----------------------------------------------------------------
+  const routeOwner = getRouteOwner(pathname);
   const isAuth = isAuthRoute(pathname);
 
-  // Rule 1 : User is logged in and trying to access auth route. Redirect to default dashboard
-  if (accessToken && isAuth) {
+  // Rule 1 : User is logged in and trying to access auth route (e.g., /login)
+  if (isAuthenticated && isAuth) {
     return NextResponse.redirect(
       new URL(getDefaultDashboardRoute(userRole as UserRole), request.url)
     );
   }
 
-  // Rule 2 : User is trying to access open public route
-  if (routerOwner === null) {
+  // Rule 2 : User is trying to access open public route (e.g., /about)
+  if (routeOwner === null) {
     return NextResponse.next();
   }
 
-  // Rule 1 & 2 for open public routes and auth routes
-
-  if (!accessToken) {
+  // Rule 3 : Protected Routes - If not authenticated, redirect to login
+  if (!isAuthenticated) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
+
+    // If we had a bad custom token, clean it up
+    if (accessToken) {
+      const response = NextResponse.redirect(loginUrl);
+      response.cookies.delete("accessToken");
+      response.cookies.delete("refreshToken");
+      return response;
+    }
+
     return NextResponse.redirect(loginUrl);
   }
 
-  // Rule 3 : User is trying to access common protected route
-  if (routerOwner === "COMMON") {
+  // Rule 4 : User is trying to access common protected route
+  if (routeOwner === "COMMON") {
     return NextResponse.next();
   }
 
-  // Rule 4 : User is trying to access role based protected route
-  if (routerOwner === "ADMIN" || routerOwner === "USER") {
-    if (userRole !== routerOwner) {
+  // Rule 5 : User is trying to access role-based protected route
+  if (routeOwner === "ADMIN" || routeOwner === "USER") {
+    if (userRole !== routeOwner) {
       return NextResponse.redirect(
         new URL(getDefaultDashboardRoute(userRole as UserRole), request.url)
       );
     }
   }
-  console.log(userRole);
 
   return NextResponse.next();
 }

@@ -15,7 +15,7 @@ export interface TravelPlan {
   status: TravelStatus;
   createdAt: string;
   updatedAt: string;
-  user: User;
+  user?: User;
 }
 
 export interface TravelPlanFormData {
