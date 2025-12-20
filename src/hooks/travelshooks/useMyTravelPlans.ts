@@ -78,6 +78,19 @@ const fetchPlans = useCallback(async () => {
     setPlans(prev => prev.filter(p => p.id !== id));
     setUserPlans(prev => prev.filter(p => p.id !== id));
   };
+ const getSinglePlan = useCallback(async (id: string) => {
+    setLoading(true);
+    try {
+      const res = await api.get(`/travelPlan/${id}`);
+      return res.data.data;
+    } catch (err) {
+      console.error("Fetch single plan error", err);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  
 
-  return { plans, userPlans, loading, createPlans, updatePlan, deletePlan };
+  return { plans, userPlans, loading, createPlans, updatePlan, deletePlan, getSinglePlan,refreshPlans: fetchUserPlans };
 }

@@ -1,8 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
 
 import { useMemo, useState } from 'react'
 import { Plus, Plane } from 'lucide-react'
-import { AnimatePresence, motion } from 'framer-motion'
 import { useSession } from 'next-auth/react'
 import { TravelPlan, TravelPlanFormData, TravelStatus } from '@/types/travel'
 import { useMyTravelPlans } from '@/hooks/travelshooks/useMyTravelPlans'

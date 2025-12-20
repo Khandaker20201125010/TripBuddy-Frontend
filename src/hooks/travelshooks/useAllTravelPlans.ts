@@ -4,14 +4,14 @@ import { TravelPlan } from '@/types/travel';
 import api from '@/lib/axios';
 
 export function useAllTravelPlans() {
-  console.log("🔄 useAllTravelPlans hook called");
+  
   
   const [plans, setPlans] = useState<TravelPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchAllPlans = useCallback(async () => {
-    console.log("📡 Starting fetchAllPlans...");
+   
     
     try {
       setLoading(true);
