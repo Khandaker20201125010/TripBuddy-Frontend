@@ -1,3 +1,4 @@
+/* eslint-disable react/no-unescaped-entities */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -5,22 +6,21 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { MapPinIcon, Loader2 } from "lucide-react";
+import { useRouter, usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 
+// --- Framer Motion Variants ---
 const aiBoxVariants = {
-  hidden: { opacity: 0, scale: 0.95 },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] },
-  },
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6 } },
 };
 
 const suggestionCardVariants = {
-  hidden: { opacity: 0, x: 20 },
+  hidden: { opacity: 0, x: -20 },
   visible: (i: number) => ({
     opacity: 1,
     x: 0,
-    transition: { duration: 0.55, delay: 0.3 + i * 0.15 },
+    transition: { delay: i * 0.1, duration: 0.4 },
   }),
 };
 
@@ -29,29 +29,49 @@ export default function AISuggestions() {
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [plans, setPlans] = useState<any[]>([]);
+  const { data: session } = useSession();
+
+  const router = useRouter();
+  const pathname = usePathname();
 
   const handleAIRequest = async () => {
     if (!input.trim()) return;
-
     setLoading(true);
+    setSuggestions([]); // Clear previous results
+    
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/suggestion`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ symptoms: input }),
-        }
-      );
-
-      const data = await res.json();
-
-      setSuggestions(data.data.ai.suggestions);
-      setPlans(data.data.availablePlans);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/travelPlan/suggestion`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ symptoms: input }),
+      });
+      
+      const result = await res.json();
+      
+      if (result.success && result.data) {
+        // Based on your backend code: result.data.ai.suggestions and result.data.availablePlans
+        setSuggestions(result.data.ai.suggestions || []);
+        setPlans(result.data.availablePlans || []);
+      }
     } catch (err) {
-      console.error("AI Error:", err);
+      console.error("AI Fetch Error:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+const handlePlanClick = (planId: string) => {
+    if (!planId) {
+      console.error("No Plan ID found");
+      return;
+    }
+
+    // 2. Use the session object for the login check
+    if (!session) {
+      router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
+    } else {
+      // 3. Double check this path matches your folder structure exactly
+      router.push(`/my-travel-plans/${planId}`);
     }
   };
 
@@ -64,97 +84,109 @@ export default function AISuggestions() {
       animate="visible"
       className="relative bg-(--color-card) rounded-3xl shadow-xl shadow-(--color-charcoal)/10 overflow-hidden border border-(--color-sand-dark)"
     >
-      {/* Header */}
+      {/* Header & Input Section */}
       <div className="bg-linear-to-r from-orange-500/80 to-(--color-sunset) p-6">
         <div className="text-white font-semibold text-lg flex items-center gap-2">
           <MapPinIcon className="w-5 h-5" />
-          AI Travel Match
+          AI Travel Matcher
         </div>
-
-        <p className="text-white/70 text-sm mt-1">
-          Describe your mood, symptoms, or travel vibe.
+        <p className="text-orange-100 text-sm mt-1">
+          Tell us how you feel, and we'll find the perfect trip.
         </p>
-
-        {/* Input */}
+        
         <div className="mt-4 flex gap-2">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Example: I'm stressed and want nature"
-            className="flex-1 px-4 py-3 rounded-xl bg-white/20 text-white placeholder-white/60 outline-none backdrop-blur-sm"
+            onKeyDown={(e) => e.key === "Enter" && handleAIRequest()}
+            placeholder="e.g. I'm exhausted and need a quiet beach..."
+            className="flex-1 px-4 py-3 rounded-xl bg-white/20 text-white placeholder-white/70 outline-none backdrop-blur-md border border-white/30 focus:bg-white/30 transition-all"
           />
           <button
             onClick={handleAIRequest}
-            className="px-6 py-3 bg-white text-(--color-blue) font-semibold rounded-xl hover:bg-(--color-sand) transition"
+            disabled={loading}
+            className="px-6 py-3 bg-white text-orange-600 font-bold rounded-xl hover:bg-orange-50 transition active:scale-95 disabled:opacity-50"
           >
-            Go
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Go"}
           </button>
         </div>
       </div>
 
-      {/* Results */}
-      <div className="p-6 space-y-4">
+      {/* Results Section */}
+      <div className="p-6 space-y-4 max-h-[500px] overflow-y-auto">
         {loading && (
-          <div className="flex justify-center py-10">
-            <Loader2 className="animate-spin w-8 h-8 text-(--color-coral)" />
+          <div className="flex flex-col items-center justify-center py-12 text-stone-400">
+            <Loader2 className="animate-spin w-10 h-10 mb-2 text-orange-500" />
+            <p className="text-sm font-medium">Consulting the travel AI...</p>
           </div>
         )}
 
-        {!loading && suggestions.length === 0 && (
-          <p className="text-center text-(--color-charcoal)/60 py-10">
-            Enter something above to get AI suggestions ✨
-          </p>
+        {!loading && suggestions.length === 0 && !input && (
+          <div className="text-center py-10 text-stone-400">
+            <h1>Enter something above to get AI suggestions ✨</h1>
+            <p>And Your personalized matches will appear here.</p>
+          </div>
         )}
 
-        {!loading &&
-          suggestions.map((s, i) => {
-            const plan = findPlan(s.id);
-            if (!plan) return null;
+        {!loading && suggestions.map((s, i) => {
+          const plan = findPlan(s.id);
+          if (!plan) return null;
 
-            return (
-              <motion.div
-                key={s.id}
-                custom={i}
-                variants={suggestionCardVariants}
-                initial="hidden"
-                animate="visible"
-                className="p-4 rounded-2xl bg-(--color-sand)/30 hover:bg-(--color-sand) shadow group cursor-pointer transition"
-              >
-                <div className="flex items-center gap-4">
+          return (
+            <motion.div
+              key={plan.id}
+              custom={i}
+              variants={suggestionCardVariants}
+              initial="hidden"
+              animate="visible"
+              onClick={() => handlePlanClick(plan.id)}
+              className="p-4 rounded-2xl bg-stone-50 border border-stone-100 hover:border-orange-200 hover:bg-orange-50/50 shadow-sm group cursor-pointer transition-all active:scale-[0.98]"
+            >
+              <div className="flex items-center gap-4">
+                <div className="relative w-16 h-16 shrink-0">
                   <Image
-                    src={plan.image || "/placeholder.jpg"}
+                    src={plan.image || "/default-cover.jpg"}
                     alt={plan.destination}
-                    width={60}
-                    height={60}
+                    fill
                     className="rounded-xl object-cover"
                   />
-
-                  <div className="flex-1">
-                    <h3 className="text-(--color-charcoal) font-semibold text-lg">
-                      {plan.destination}
-                    </h3>
-                    <p className="text-sm text-(--color-charcoal)/60 mt-1">
-                      {plan.description.substring(0, 70)}...
-                    </p>
-                  </div>
-
-                  <div className="text-right">
-                    <div className="text-xl font-bold text-(--color-coral)">
-                      {s.matchScore}
-                    </div>
-                    <div className="text-xs text-(--color-charcoal)/50">
-                      score
-                    </div>
-                  </div>
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-stone-800 font-bold text-base truncate">
+                    {plan.destination}
+                  </h3>
+                  <p className="text-xs text-stone-500 line-clamp-2 mt-0.5">
+                    {plan.description}
+                  </p>
                 </div>
 
-                <p className="text-xs mt-2 text-(--color-charcoal)/50">
-                  {s.reason}
+                <div className="text-right shrink-0">
+                  <div className="text-xl font-black text-orange-600">
+                    {s.matchScore}%
+                  </div>
+                  <div className="text-[10px] uppercase tracking-wider text-stone-400 font-bold">
+                    Match
+                  </div>
+                </div>
+              </div>
+              
+              {/* AI Reasoning Tag */}
+              <div className="mt-3 pt-3 border-t border-stone-200/60">
+                <p className="text-xs text-stone-600 leading-relaxed">
+                  <span className="font-bold text-orange-600">AI Logic:</span> {s.reason}
                 </p>
-              </motion.div>
-            );
-          })}
+              </div>
+            </motion.div>
+          );
+        })}
+        
+        {!loading && suggestions.length === 0 && input && (
+           <div className="text-center py-10 text-stone-500">
+             No specific matches found. Try describing a different vibe!
+           </div>
+        )}
       </div>
     </motion.div>
   );

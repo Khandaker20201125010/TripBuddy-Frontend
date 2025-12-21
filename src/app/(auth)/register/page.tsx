@@ -1,7 +1,6 @@
 import RegisterForm from '@/components/auth-form/RegisterForm';
-import LoginForm from '@/components/auth-form/LoginForm';
 import Image from 'next/image';
-import loginsinup from "../../../../../public/images/loginsinup.png";
+import loginsinup from "../../../../public/images/loginsinup.png";
 
 const RegisterPage = async ({
     searchParams,
@@ -13,19 +12,21 @@ const RegisterPage = async ({
     return (
         <div className="min-h-screen flex flex-col md:flex-row">
             {/* Left side full-screen image */}
-            <div className="relative w-full md:w-1/2 h-screen">
+          <div className="relative flex w-full md:w-1/2 h-screen order-1 md:order-2">
                 <Image
                     src={loginsinup}
                     alt="Login Illustration"
                     fill
-                    className="object-cover"
+                    /* 3. Added block and h-full to the image classes */
+                    className="object-cover block w-full h-full"
                     priority
+                    sizes="(max-width: 768px) 100vw, 50vw"
                 />
             </div>
 
             {/* Right side login form */}
-            <div className="flex w-full md:w-1/2 items-center justify-center bg-gray-50 p-8">
-                <div className="w-full max-w-md bg-white rounded-xl shadow-xl p-8">
+            <div className="flex w-full md:w-1/2 items-center justify-center ">
+                <div className="w-full max-w-md bg-white rounded-xl shadow-xl">
                   
 
                     <RegisterForm  />

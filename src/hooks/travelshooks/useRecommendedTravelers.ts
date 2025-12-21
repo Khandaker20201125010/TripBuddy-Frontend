@@ -1,28 +1,72 @@
+'use client'
+
 import { useEffect, useState } from 'react';
-import { Traveler } from '@/components/shared/data/mockTravelers';
+import { useSession } from 'next-auth/react'; // 1. Import NextAuth hook
 
 export function useRecommendedTravelers() {
-  const [recommendedTravelers, setRecommendedTravelers] = useState<Traveler[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const { data: session, status } = useSession(); // 2. Get session data
+  const [recommendedTravelers, setRecommendedTravelers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchRecommendedTravelers = async () => {
+    // Wait for session to load before fetching
+    if (status === "loading") return;
+
+    const fetchRecommended = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/travelers/recommended`);
-        const data = await res.json();
-        setRecommendedTravelers(data.data || []);
+        // 3. Get token from Session OR fall back to empty (backend might use cookies)
+        // Note: Your authOptions maps token.accessToken to session.accessToken
+        const token = (session as any)?.accessToken; 
+
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/travelPlan/recommended`, {
+           headers: {
+             // If we have a session token, use it. Otherwise, send empty string.
+             'Authorization': token ? `Bearer ${token}` : '',
+             'Content-Type': 'application/json'
+           },
+           // 4. IMPORTANT: This allows the browser to send the 'accessToken' cookie 
+           // that your backend set in the Login controller.
+           credentials: 'include', 
+        });
+        
+        const result = await res.json();
+        
+        if (!result.success) {
+            // Use a soft error so we don't crash, just show nothing
+            console.warn("Recommended API Error:", result.message);
+            setRecommendedTravelers([]);
+            return;
+        }
+
+        // 5. Handle Data Mapping
+        let rawData = [];
+        if (result?.data && Array.isArray(result.data)) {
+           rawData = result.data;
+        }
+
+        const mapped = rawData.map((user: any) => ({
+          id: user.id,
+          name: user.name || 'Traveler',
+          // Handle both Cloudinary URLs and local paths
+          avatar: user.profileImage || '/default-avatar.png', 
+          bio: user.bio || 'Ready to explore.',
+          interests: user.interests || [],
+          location: user.visitedCountries?.[0] || 'Global',
+          rating: user.rating || 0,
+        }));
+
+        setRecommendedTravelers(mapped);
       } catch (err) {
-        console.error(err);
-        setError('Failed to fetch recommended travelers');
+        console.error("Recommended Hook Error:", err);
+        setRecommendedTravelers([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchRecommendedTravelers();
-  }, []);
+    fetchRecommended();
+  }, [session, status]); // Re-run when session changes
 
-  return { recommendedTravelers, loading, error };
+  return { recommendedTravelers, loading };
 }

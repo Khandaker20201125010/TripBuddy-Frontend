@@ -1,6 +1,6 @@
 import LoginForm from '@/components/auth-form/LoginForm';
 import Image from 'next/image';
-import loginsinup from "../../../../../public/images/loginsinup.png";
+import loginsinup from "../../../../public/images/loginsinup.png";
 
 const LoginPage = async ({
     searchParams,
@@ -32,14 +32,15 @@ const LoginPage = async ({
                 </div>
             </div>
       
-            <div className="relative w-full md:w-1/2 h-screen">
+            <div className="relative flex w-full md:w-1/2 h-screen order-1 md:order-2">
                 <Image
                     src={loginsinup}
                     alt="Login Illustration"
-                    width={800}
-                    height={600}
-                    className="object-cover"
+                    fill
+                    /* 3. Added block and h-full to the image classes */
+                    className="object-cover block w-full h-full"
                     priority
+                    sizes="(max-width: 768px) 100vw, 50vw"
                 />
             </div>
 

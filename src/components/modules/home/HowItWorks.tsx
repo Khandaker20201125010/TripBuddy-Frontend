@@ -2,14 +2,28 @@
 import  { useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useInView } from 'framer-motion'
-import { UserPlusIcon, SparklesIcon, UsersIcon, PlaneIcon } from 'lucide-react'
+import { UserPlusIcon, SparklesIcon, MapIcon, SearchIcon,} from 'lucide-react'
 const steps = [
-  {
+ {
     icon: UserPlusIcon,
-    title: 'Create Your Profile',
+    title: 'Sign Up',
     description:
-      "Tell us about your travel style, interests, and what you're looking for in a travel companion.",
-    color: 'var(--color-coral)',
+      "Join our community in seconds. Complete your profile to let others know your travel personality.",
+    color: 'var(--color-coral)', // Coral
+  },
+  {
+    icon: MapIcon,
+    title: 'Create a Plan',
+    description:
+      'Post your upcoming trip details, destination, and the kind of adventure you are looking for.',
+    color: 'var(--color-blue)', // Blue
+  },
+  {
+    icon: SearchIcon,
+    title: 'Find Your Buddy',
+    description:
+      'Connect with compatible travelers, chat about your itinerary, and start your journey together.',
+    color: 'var(--color-teal)', // Teal
   },
   {
     icon: SparklesIcon,
@@ -18,21 +32,9 @@ const steps = [
       'Our smart algorithm analyzes thousands of travelers to find the most compatible companions for your trip.',
     color: 'var(--color-sunset)',
   },
-  {
-    icon: UsersIcon,
-    title: 'Connect & Plan Together',
-    description:
-      'Chat with your matches, share itineraries, and plan your adventure together in our collaborative space.',
-    color: 'var(--color-blue)',
-  },
-  {
-    icon: PlaneIcon,
-    title: 'Travel & Make Memories',
-    description:
-      'Meet up at your destination and create unforgettable experiences with your new travel buddy.',
-    color: 'var(--color-teal)',
-  },
+ 
 ]
+
 export function HowItWorks() {
   const ref = useRef(null)
   const isInView = useInView(ref, {

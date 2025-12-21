@@ -9,55 +9,50 @@ import { Button } from "../ui/button";
 import { Eye, EyeOff } from "lucide-react";
 import { FcGoogle } from 'react-icons/fc';
 import { signIn } from "next-auth/react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 const LoginForm = ({ redirect }: { redirect?: string }) => {
-  const pathname = usePathname();
-  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get("redirect");
   const [isPending, setIsPending] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const togglePassword = () => setShowPassword(!showPassword);
 
-  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsPending(true);
+ const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+  setIsPending(true);
 
-    const formData = new FormData(e.currentTarget);
-    const email = formData.get("email");
-    const password = formData.get("password");
-    const targetRedirect = redirect || pathname || "/";
+  const formData = new FormData(e.currentTarget);
+  const email = formData.get("email");
+  const password = formData.get("password");
 
-    // Call NextAuth signIn - this triggers the 'authorize' callback in your route.ts
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false, // Handle redirect manually to show Swal
+  // Decode the URL properly and ensure it starts with a slash to stay on-site
+  const rawRedirect = searchParams.get("redirect");
+  const targetRedirect = rawRedirect ? decodeURIComponent(rawRedirect) : "/";
+
+  const result = await signIn("credentials", {
+    email,
+    password,
+    redirect: false, 
+  });
+
+  if (result?.error) {
+    // ... error handling
+  } else {
+    Swal.fire({
+      title: "Login Successful!",
+      icon: "success",
+      timer: 1200,
+      showConfirmButton: false,
     });
 
-    if (result?.error) {
-      setIsPending(false);
-      Swal.fire({
-        title: "Login Failed",
-        text: "Invalid email or password",
-        icon: "error",
-        confirmButtonText: "OK",
-      });
-    } else {
-      Swal.fire({
-        title: "Login Successful!",
-        icon: "success",
-        timer: 1200,
-        showConfirmButton: false,
-        timerProgressBar: true,
-      });
-
-      // Force a hard refresh to the redirect URL to ensure session is active
-      setTimeout(() => {
-        window.location.href = targetRedirect;
-      }, 1200);
-    }
-  };
+    // Use window.location.replace to prevent the user from clicking "back" into the login form
+    setTimeout(() => {
+      window.location.replace(targetRedirect);
+    }, 1200);
+  }
+};
 
   return (
     <form onSubmit={handleLogin} className="space-y-4">
@@ -88,26 +83,37 @@ const LoginForm = ({ redirect }: { redirect?: string }) => {
             </button>
           </div>
         </Field>
-
-        {/* Submit */}
-        <FieldGroup className="mt-4">
-          <Button className="cursor-pointer" variant={"gradient"} type="submit" disabled={isPending}>
+        {/* Submit Button */}
+        <FieldGroup className="mt-6">
+          <Button
+            className="w-full cursor-pointer h-11"
+            variant="gradient"
+            type="submit"
+            disabled={isPending}
+          >
             {isPending ? "Logging in..." : "Login"}
           </Button>
         </FieldGroup>
 
-        <div className="h-2">
-          <h1 className="flex items-center justify-center font-bold text-lg">or</h1>
+        {/* Modern "Or" Divider */}
+        <div className="relative w-full flex items-center py-4">
+          <div className="grow border-t border-gray-200"></div>
+          <span className="shrink mx-4 text-gray-400 text-sm font-medium uppercase tracking-wider">
+            or
+          </span>
+          <div className="grow border-t border-gray-200"></div>
         </div>
 
+        {/* Google Login Button */}
         <div className="w-full">
-          <Button 
-            type="button" 
-            variant="gradient" 
-            onClick={() => signIn("google", { callbackUrl: "/" })} 
-            className="flex items-center justify-center h-9 px-3 w-full"
+          <Button
+            type="button"
+            variant="outline" // Changed to outline to differentiate from the main Login button
+            onClick={() => signIn("google", { callbackUrl: "/" })}
+            className="flex items-center justify-center gap-3 h-11 w-full border-gray-200 hover:bg-gray-50 transition-all"
           >
-            <FcGoogle size={40} />
+            <FcGoogle size={24} />
+            <span className="text-gray-700 font-medium">Continue with Google</span>
           </Button>
         </div>
       </FieldGroup>

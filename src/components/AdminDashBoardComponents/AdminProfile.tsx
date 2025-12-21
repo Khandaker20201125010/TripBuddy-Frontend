@@ -129,7 +129,7 @@ const AdminProfile = ({ profile, onUpdate }: { profile: any; onUpdate: () => voi
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-6">
-                        <Link href="/dashboard/manage-users">
+                        <Link href="/adminDashboard/manage-users">
                             <Button variant="outline" className="w-full justify-start gap-3 h-14 hover:border-blue-500 hover:bg-blue-50 transition-all">
                                 <Users size={18} className="text-blue-500" />
                                 <div className="text-left">
@@ -138,7 +138,7 @@ const AdminProfile = ({ profile, onUpdate }: { profile: any; onUpdate: () => voi
                                 </div>
                             </Button>
                         </Link>
-                        <Link href="/dashboard/manage-plans">
+                        <Link href="/adminDashboard/manage-travel-plans">
                             <Button variant="outline" className="w-full justify-start gap-3 h-14 hover:border-green-500 hover:bg-green-50 transition-all">
                                 <Map size={18} className="text-green-500" />
                                 <div className="text-left">

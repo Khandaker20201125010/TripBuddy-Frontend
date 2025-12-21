@@ -153,29 +153,44 @@ const RegisterForm = () => {
       </FieldGroup>
 
       {/* Submit */}
-      <div className="pt-4 flex flex-col items-center gap-2">
+      <div className="pt-6 flex flex-col items-center gap-4">
+        {/* Submit Button */}
         <Button variant="gradient" type="submit" disabled={isPending} className="w-full">
           {isPending ? "Creating Account..." : "Create Account"}
         </Button>
 
-        <FieldDescription className="text-center">
-          Already have an account?{" "}
-          <a href="/login" className="text-blue-600 hover:underline">
-            Sign in
-          </a>
-        </FieldDescription>
-        <div className="h-2 ">
-          <h1 className="flex items-center justify-center font-bold text-lg ">or</h1>
+
+
+        {/* Visual "Or" Divider */}
+        <div className="relative w-full flex items-center py-2">
+          <div className="grow border-t border-gray-200"></div>
+          <span className="shrink mx-4 text-gray-400 text-sm uppercase tracking-wider">or</span>
+          <div className="grow border-t border-gray-200"></div>
         </div>
+
+        {/* Google Login Button */}
         <div className="w-full">
-          <Button type="button" variant="gradient" onClick={() =>
-            signIn("google", {
-              callbackUrl: "/",
-            })
-          } className="flex items-center justify-center h-9 px-3  w-full ">
-            <FcGoogle size={40} />
+          <Button
+            type="button"
+            variant="outline" // Changed to outline for better visual hierarchy
+            onClick={() =>
+              signIn("google", {
+                callbackUrl: "/",
+              })
+            }
+            className="flex items-center justify-center gap-3 h-11 w-full border-gray-200 hover:bg-gray-50 transition-colors"
+          >
+            <FcGoogle size={24} />
+            <span className="text-gray-700 font-medium">Continue with Google</span>
           </Button>
         </div>
+        {/* Sign In Link */}
+        <p className="text-sm text-center text-gray-500">
+          Already have an account?{" "}
+          <a href="/login" className="text-blue-600 font-medium hover:underline">
+            Sign in
+          </a>
+        </p>
       </div>
     </form>
   );
