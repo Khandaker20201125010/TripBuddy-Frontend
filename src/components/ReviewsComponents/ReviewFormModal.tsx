@@ -83,7 +83,7 @@ export function ReviewFormModal({ plan, onClose, onSuccess }: ReviewModalProps) 
 
       <div className="flex justify-end gap-2 pt-2">
         <Button variant="outline" onClick={onClose} disabled={submitting}>Cancel</Button>
-        <Button onClick={handleSubmit} disabled={submitting || rating === 0}>
+        <Button variant="gradient" onClick={handleSubmit} disabled={submitting || rating === 0}>
           {submitting ? "Submitting..." : "Submit Review"}
         </Button>
       </div>

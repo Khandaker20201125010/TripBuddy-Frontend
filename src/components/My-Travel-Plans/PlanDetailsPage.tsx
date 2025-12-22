@@ -54,6 +54,31 @@ export default function PlanDetailsPage() {
     return plan.reviews.find((r: any) => r.reviewerId === session.user.id);
   }, [plan, session]);
 
+  // ✅ 2. AUTO-OPEN MODAL LOGIC
+  useEffect(() => {
+    // Wait until loading finishes and we have plan data
+    if (!loading && plan && session?.user) {
+      
+      // Criteria: Trip is over + User is Approved Buddy + User hasn't reviewed yet
+      if (isTripOver && isApprovedBuddy && !userReview) {
+        
+        // Optional: Check sessionStorage to prevent annoying the user if they close it once per session
+        // Remove the sessionStorage lines if you want it to FORCE open every refresh
+        const hasSeenPrompt = sessionStorage.getItem(`review_prompt_${plan.id}`);
+
+        if (!hasSeenPrompt) {
+          // Add a small delay for better UX (don't pop up instantly on load)
+          const timer = setTimeout(() => {
+            setIsReviewModalOpen(true);
+            sessionStorage.setItem(`review_prompt_${plan.id}`, 'true'); 
+          }, 1500);
+
+          return () => clearTimeout(timer);
+        }
+      }
+    }
+  }, [loading, plan, session, isTripOver, isApprovedBuddy, userReview]);
+
   const handleJoinRequest = async () => {
     if (!session) {
         return Swal.fire("Error", "Please login to join this trip", "error");
@@ -62,7 +87,7 @@ export default function PlanDetailsPage() {
     try {
       await api.post(`/travelPlan/request/${plan?.id}`);
       Swal.fire("Success", "Your request to join has been sent!", "success");
-      fetchPlanData(); // Refresh to show "Pending" status immediately
+      fetchPlanData(); 
     } catch (err: any) {
       Swal.fire("Error", err.response?.data?.message || "Failed to send request", "error");
     } finally {
@@ -122,7 +147,7 @@ export default function PlanDetailsPage() {
             </div>
           </section>
 
-          {/* ✅ 2. REVIEW LOGIC INTEGRATION (RESTRICTED TO APPROVED BUDDIES) */}
+          {/* ✅ 3. REVIEW PROMPT SECTION (Manual trigger always visible if not reviewed) */}
           {isTripOver && isApprovedBuddy && (
             <div className="p-6 bg-amber-50 border border-amber-200 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
               <div>
@@ -145,7 +170,7 @@ export default function PlanDetailsPage() {
             </div>
           )}
 
-          {/* ✅ 3. REVIEWS LIST (ONLY VISIBLE TO PARTICIPANTS) */}
+          {/* REVIEWS LIST */}
           {(isApprovedBuddy || session?.user?.id === plan.userId) ? (
             plan.reviews?.length > 0 && (
                 <section className="pt-8 border-t">
@@ -181,9 +206,8 @@ export default function PlanDetailsPage() {
           )}
         </div>
 
-        {/* Right Column: Host Summary & Sidebar */}
+        {/* Right Column: Host Summary */}
         <div className="space-y-6">
-          {/* Host Card */}
           <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm">
             <h3 className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-4">Meet your host</h3>
             <div className="flex items-center gap-4 mb-4">
@@ -219,7 +243,6 @@ export default function PlanDetailsPage() {
                </div>
             </div>
 
-            {/* ✅ 4. UPDATED ACTION BUTTON LOGIC */}
             {session?.user?.id !== plan.userId ? (
               <Button 
                 variant={isApprovedBuddy ? "outline" : "gradient"}
@@ -244,14 +267,6 @@ export default function PlanDetailsPage() {
                 You are the Host
               </Button>
             )}
-          </div>
-
-          {/* Safety Tip */}
-          <div className="bg-gray-50 rounded-2xl p-4 flex gap-3 items-start">
-            <ShieldCheck className="w-8 h-8 text-gray-400 shrink-0" />
-            <p className="text-xs text-gray-500">
-              For your safety, always keep communications within the platform and review the host's previous trip ratings.
-            </p>
           </div>
         </div>
       </div>
