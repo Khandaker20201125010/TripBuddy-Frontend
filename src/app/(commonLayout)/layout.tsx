@@ -5,22 +5,25 @@ import { Navbar } from "@/components/shared/Navbar";
 import { SessionProvider } from "next-auth/react";
 
 const commonLayout = ({ children }: { children: React.ReactNode }) => {
-
     return (
-        <>
-            <SessionProvider>
-                <div className="mb-20">
+        <SessionProvider>
+            {/* Navbar with fixed height or margin */}
+            <div className="mb-20">
+                <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
                     <Navbar />
                 </div>
+            </div>
 
-                <div className="min-h-screen font-display">
-                    {children}
-                </div>
+            {/* Main Content Area */}
+            <main className="min-h-screen font-display max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+                {children}
+            </main>
 
+            {/* Footer Container */}
+            <footer className="">
                 <Footer />
-            </SessionProvider>
-        </>
+            </footer>
+        </SessionProvider>
     );
 };
-
 export default commonLayout;

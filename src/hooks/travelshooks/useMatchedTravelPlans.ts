@@ -1,11 +1,28 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import api from "@/lib/axios";
 import { TravelPlan } from "@/types/travel";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const useMatchedTravelPlans = (filters: Record<string, any>) => {
+export interface PaginationMeta {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+}
+
+// Added sortBy param
+export const useMatchedTravelPlans = (
+  filters: Record<string, any>, 
+  page: number = 1, 
+  limit: number = 6,
+  sortBy: string = "Best Match" 
+) => {
   const [data, setData] = useState<TravelPlan[]>([]);
   const [loading, setLoading] = useState(false);
+  const [pagination, setPagination] = useState<PaginationMeta>({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -14,25 +31,35 @@ export const useMatchedTravelPlans = (filters: Record<string, any>) => {
       setLoading(true);
       try {
         const res = await api.get("/travelPlan/match", {
-          params: filters,
+          // Pass sortBy in params
+          params: { ...filters, page, limit, sortBy },
         });
 
         if (isMounted) {
-          setData(res.data.data);
+          const responseData = res.data?.data || [];
+          const responseMeta = res.data?.meta || res.data?.data?.meta;
+
+          setData(responseData);
+
+          if (responseMeta) {
+            setPagination({
+              currentPage: Number(responseMeta.page),
+              totalPages: Number(responseMeta.totalPages),
+              totalItems: Number(responseMeta.total),
+            });
+          }
         }
+      } catch (err) {
+        console.error("Error fetching plans:", err);
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchPlans();
 
-    return () => {
-      isMounted = false; // ✅ prevents state update on unmount
-    };
-  }, [filters]); // ✅ stable dependency
+    return () => { isMounted = false; };
+  }, [filters, page, limit, sortBy]); // Add sortBy to dependency array
 
-  return { data, loading };
+  return { data, loading, pagination };
 };

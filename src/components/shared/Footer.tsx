@@ -36,11 +36,11 @@ export function Footer() {
   })
 
   return (
-    <footer ref={ref} className="bg-(--color-charcoal) text-white">
+    <footer ref={ref} className="bg-(--color-charcoal) text-white max-w-[1440px] mx-auto">
       
       {/* CTA Section */}
       <div className="border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-6 py-20">
+        <div className="w-full mx-auto px-6 py-20">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={isInView ? { opacity: 1, y: 0 } : {}}
