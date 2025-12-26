@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -10,42 +11,44 @@ export default function GlobalReviewPopup() {
   const { data: session } = useSession();
   const [pendingPlan, setPendingPlan] = useState<any | null>(null);
   const [isOpen, setIsOpen] = useState(false);
-
-  const checkPendingReviews = async () => {
-    if (!session?.user) return;
-
-    try {
-      // Call the new endpoint we made in Step 1
-      const res = await api.get("/review/pending");
-      
-      if (res.data?.data) {
-        const plan = res.data.data;
-        
-        // Check session storage so we don't annoy them if they just closed it
-        const hasSeen = sessionStorage.getItem(`ignore_review_${plan.id}`);
-        
-        if (!hasSeen) {
-          setPendingPlan(plan);
-          setIsOpen(true);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to check pending reviews", error);
-    }
-  };
+  
+  // 1. Create a "trigger" state. Incrementing this number forces the effect to run again.
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    // Check when session loads
+    // 2. Define the async function INSIDE the effect.
+    // This allows the linter to see the scope clearly and avoids external dependencies.
+    const checkPendingReviews = async () => {
+      if (!session?.user) return;
+
+      try {
+        const res = await api.get("/review/pending");
+        
+        if (res.data?.data) {
+          const plan = res.data.data;
+          const hasSeen = sessionStorage.getItem(`ignore_review_${plan.id}`);
+          
+          if (!hasSeen) {
+            setPendingPlan(plan);
+            setIsOpen(true);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to check pending reviews", error);
+      }
+    };
+
+    // Only run if we have a user
     if (session?.user) {
       checkPendingReviews();
     }
-  }, [session]);
+
+    // 3. Add 'refreshKey' to dependencies. Changing it re-runs this effect.
+  }, [session, refreshKey]);
 
   const handleClose = () => {
     setIsOpen(false);
     if (pendingPlan) {
-      // If they close without reviewing, remind them next session (or set timeout)
-      // For now, let's silence it for this browser session
       sessionStorage.setItem(`ignore_review_${pendingPlan.id}`, "true");
     }
   };
@@ -53,8 +56,9 @@ export default function GlobalReviewPopup() {
   const handleSuccess = () => {
     setIsOpen(false);
     setPendingPlan(null);
-    // Optionally check if there are MORE reviews pending
-    checkPendingReviews(); 
+    
+
+    setRefreshKey(prev => prev + 1); 
   };
 
   if (!pendingPlan) return null;

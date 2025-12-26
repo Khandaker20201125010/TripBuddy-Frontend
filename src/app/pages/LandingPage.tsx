@@ -15,7 +15,10 @@ const LandingPage = () => {
             <AIFeature />
             <Destinations />
             <Testimonials />
-            <Pricing />
+            <div >
+                <Pricing />
+            </div>
+
         </div>
     );
 };

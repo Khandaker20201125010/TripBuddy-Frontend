@@ -1,7 +1,8 @@
 export interface User {
   id: string;
+  userId?: string
   name: string;
-  email: string;
+  email?: string;
   role?: string;  // From API
   status?: string; // From API
   bio?: string | null; // From API

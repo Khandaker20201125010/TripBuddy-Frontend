@@ -16,13 +16,16 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(credentials),
-        });
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/auth/login`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(credentials),
+          }
+        );
         const result = await res.json();
-        
+
         if (res.ok && result.data) {
           // ENSURE ID IS RETURNED HERE
           return {
@@ -30,6 +33,8 @@ export const authOptions: NextAuthOptions = {
             name: result.data.user.name,
             email: result.data.user.email,
             role: result.data.user.role,
+            premium: result.data.user.premium,
+            subscriptionType: result.data.user.subscriptionType,
             accessToken: result.data.accessToken,
           };
         }
@@ -43,26 +48,33 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
+        token.premium = user.premium;
+        token.subscriptionType = user.subscriptionType;
         token.accessToken = (user as any).accessToken;
       }
 
       // 2. Google Sync Logic
       if (account?.provider === "google") {
         try {
-          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login/google`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              email: token.email,
-              name: token.name,
-              image: token.picture,
-            }),
-          });
+          const res = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/auth/login/google`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                email: token.email,
+                name: token.name,
+                image: token.picture,
+              }),
+            }
+          );
           const result = await res.json();
           if (res.ok && result.data) {
             token.accessToken = result.data.accessToken;
             token.id = String(result.data.user.id); // Force to String
             token.role = result.data.user.role;
+            token.premium = result.data.user.premium;
+            token.subscriptionType = result.data.user.subscriptionType;
           }
         } catch (error) {
           console.error("Google Sync Error:", error);
@@ -73,9 +85,11 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }: any) {
       if (token) {
         // MUST attach token.id to the session user object
-        session.user.id = String(token.id); 
+        session.user.id = String(token.id);
         session.user.role = token.role;
         session.accessToken = token.accessToken;
+        session.user.premium = token.premium;
+        session.user.subscriptionType = token.subscriptionType;
       }
       return session;
     },

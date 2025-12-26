@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // hooks/useRegionStats.ts
 import { useEffect, useState } from 'react';
 

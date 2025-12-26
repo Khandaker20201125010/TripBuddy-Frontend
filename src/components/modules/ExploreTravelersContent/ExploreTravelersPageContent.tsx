@@ -11,6 +11,7 @@ import { RecentlyActiveSection } from './RecentlyActiveSection'
 import { BrowseByRegion } from './BrowseByRegion'
 import { useRecommendedTravelers } from '@/hooks/travelshooks/useRecommendedTravelers'
 import { useTravelers } from '@/hooks/travelshooks/useAllTravelers'
+import Subscription from './Subscription'
 
 export function ExploreTravelersPageContent() {
   const [filters, setFilters] = useState<TravelerFilters>({})
@@ -207,26 +208,12 @@ export function ExploreTravelersPageContent() {
             <TopRatedSection />
             <RecentlyActiveSection />
             <BrowseByRegion />
-
-            <div className="bg-emerald-700 rounded-xl p-6 text-white relative overflow-hidden">
-              <div className="relative z-10">
-                <h3 className="font-bold text-lg mb-2">Become a Verified Traveler</h3>
-                <p className="text-emerald-100 text-sm mb-4">
-                  Get the blue badge, unlock exclusive features.
-                </p>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="w-full bg-white text-emerald-800 hover:bg-emerald-50"
-                >
-                  Apply Now
-                </Button>
-              </div>
-              <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-emerald-600 rounded-full opacity-50" />
-            </div>
+            <Subscription />
+         
           </aside>
         </div>
       </main>
+      
     </div>
   )
 }

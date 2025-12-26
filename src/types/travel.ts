@@ -28,3 +28,26 @@ export interface TravelPlanFormData {
   visibility?: boolean;
   image?: File; 
 }
+export interface Traveler {
+  id: string;
+  userId?: string;
+  name: string;
+  handle: string;
+  avatar: string;
+  profileImage?: string;
+  coverImage: string;
+  bio: string;
+  visitedCountries?: string[];
+  interests: string[];
+  role?: 'USER' | 'ADMIN';
+  sentConnections?: { status: string }[];
+  receivedConnections?: { status: string }[];
+  rating: number;
+  online: boolean;
+  verified: boolean;
+  location: string;
+  travelType: string;
+  startDate?: string;
+  endDate?: string;
+  budget?: number;
+}
