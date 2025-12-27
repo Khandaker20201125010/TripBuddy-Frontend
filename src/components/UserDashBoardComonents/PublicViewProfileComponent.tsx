@@ -9,7 +9,7 @@ import { motion } from 'framer-motion'
 import {
     MapPin, Calendar, Star, Globe,
     Briefcase, CheckCircle, Shield, AlertCircle,
-    Sparkles, UserPlus
+    Sparkles, UserPlus, Clock, Loader2
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -28,7 +28,7 @@ import Swal from 'sweetalert2'
 import { PaymentModal } from '../payment/PaymentModal'
 
 interface PublicViewProfileProps {
-    traveler: Traveler
+    traveler?: Traveler
 }
 
 const PublicViewProfileComponent = ({ traveler }: PublicViewProfileProps) => {
@@ -39,73 +39,18 @@ const PublicViewProfileComponent = ({ traveler }: PublicViewProfileProps) => {
     const [loading, setLoading] = useState(true)
     const [user, setUser] = useState<any>(null)
     const [errorDetails, setErrorDetails] = useState<string>("")
-    const [isSent, setIsSent] = useState(false)
     const [isPricingOpen, setIsPricingOpen] = useState(false);
-    const { sendRequest, isLoading } = useConnection()
+    const { sendRequest, isLoading: isConnectionLoading } = useConnection()
     const { data: session } = useSession()
+    
+    const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
+    const [connectionDirection, setConnectionDirection] = useState<string | null>(null);
+    const [localLoading, setLocalLoading] = useState(false);
 
     // Logic to determine profile IDs and connection status
     const profileId = user?.id || traveler?.userId || traveler?.id
     const isSelf = session?.user?.id === profileId
 
-    // Check status from either the initial prop or the freshly fetched user state
-    const connectionData = user || traveler;
-    const dbStatus = connectionData?.sentConnections?.[0]?.status || connectionData?.receivedConnections?.[0]?.status;
-
-    const isPending = dbStatus === "PENDING" || isSent
-    const isAccepted = dbStatus === "ACCEPTED"
-
-    const handleConnectClick = async () => {
-        // 1. Unauthenticated Check
-        if (!session?.accessToken) {
-            return Swal.fire({
-                title: 'Login Required',
-                text: 'You must be logged in to connect with other travelers.',
-                icon: 'info',
-                showCancelButton: true,
-                confirmButtonText: 'Log In',
-                confirmButtonColor: '#f97316',
-            }).then((result) => {
-                if (result.isConfirmed) router.push('/login');
-            });
-        }
-
-        if (isSelf) return toast.error("You cannot connect with yourself");
-
-        try {
-            const result = await sendRequest(profileId, session.accessToken);
-
-            if (result) {
-                setIsSent(true);
-                toast.success("Connection request sent!");
-            }
-        } catch (error: any) {
-            // --- UPDATED: HANDLES ID-BASED NAVIGATION ---
-            if (error.statusCode === 403 || error.message?.toLowerCase().includes("limit reached")) {
-                return Swal.fire({
-                    title: 'Limit Reached!',
-                    text: error.message || 'You have reached your free connection limit.',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonText: 'Upgrade Plan', // Changed text for clarity
-                    confirmButtonColor: '#f97316',
-                    cancelButtonColor: '#78716c',
-                    customClass: { popup: 'rounded-2xl' }
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        // OPEN THE MODAL INSTEAD OF SCROLLING
-                        setIsPricingOpen(true);
-                    }
-                });
-            }
-            if (error.statusCode === 409 || error.message?.includes("already exists")) {
-                setIsSent(true);
-                return toast.info("A request is already pending");
-            }
-
-            toast.error(error.message || "Failed to send request.");
-        }
-    };
     useEffect(() => {
         const fetchUser = async () => {
             if (!userId) {
@@ -134,7 +79,7 @@ const PublicViewProfileComponent = ({ traveler }: PublicViewProfileProps) => {
                 const json = await res.json()
                 if (json.success && json.data) {
                     const data = json.data
-                    setUser({
+                    const newUser = {
                         ...data,
                         interests: data.interests || [],
                         visitedCountries: data.visitedCountries || [],
@@ -145,7 +90,61 @@ const PublicViewProfileComponent = ({ traveler }: PublicViewProfileProps) => {
                         },
                         travelPlans: data.travelPlans || [],
                         reviews: data.reviewsReceived || []
-                    })
+                    }
+                    setUser(newUser)
+                    
+                    // Check localStorage for pending connection
+                    const storedConnection = localStorage.getItem(`connection_${data.id}`);
+                    if (storedConnection) {
+                        try {
+                            const connectionData = JSON.parse(storedConnection);
+                            if (Date.now() - connectionData.timestamp < 3600000) {
+                                setConnectionStatus(connectionData.status);
+                                setConnectionDirection(connectionData.direction);
+                                return;
+                            } else {
+                                localStorage.removeItem(`connection_${data.id}`);
+                            }
+                        } catch (error) {
+                            console.error('Error parsing localStorage connection data:', error);
+                        }
+                    }
+                    
+                    // Extract connection status from user data
+                    const currentUserId = session?.user?.id;
+                    let foundStatus = null;
+                    let foundDirection = null;
+                    
+                    // Check if current user sent connection to this user
+                    if (data.receivedConnections && data.receivedConnections.length > 0 && currentUserId) {
+                        const connectionFromCurrentUser = data.receivedConnections.find(
+                            (conn: any) => conn.senderId === currentUserId
+                        );
+                        if (connectionFromCurrentUser) {
+                            foundStatus = connectionFromCurrentUser.status;
+                            foundDirection = 'sent';
+                        }
+                    }
+                    
+                    // Check if this user sent connection to current user
+                    if (!foundStatus && data.sentConnections && data.sentConnections.length > 0 && currentUserId) {
+                        const connectionToCurrentUser = data.sentConnections.find(
+                            (conn: any) => conn.receiverId === currentUserId
+                        );
+                        if (connectionToCurrentUser) {
+                            foundStatus = connectionToCurrentUser.status;
+                            foundDirection = 'received';
+                        }
+                    }
+                    
+                    // Check connectionInfo field if available
+                    if (!foundStatus && data.connectionInfo) {
+                        foundStatus = data.connectionInfo.status;
+                        foundDirection = data.connectionInfo.direction;
+                    }
+                    
+                    setConnectionStatus(foundStatus);
+                    setConnectionDirection(foundDirection);
                 }
             } catch (error) {
                 setErrorDetails("Network connection failed")
@@ -155,7 +154,86 @@ const PublicViewProfileComponent = ({ traveler }: PublicViewProfileProps) => {
         }
 
         fetchUser()
-    }, [userId, session?.accessToken])
+    }, [userId, session?.accessToken, session?.user?.id])
+
+    const handleConnectClick = async () => {
+        // 1. Unauthenticated Check
+        if (!session?.accessToken || !session?.user) {
+            return Swal.fire({
+                title: 'Login Required',
+                text: 'You must be logged in to connect with other travelers.',
+                icon: 'info',
+                showCancelButton: true,
+                confirmButtonText: 'Log In',
+                confirmButtonColor: '#f97316',
+            }).then((result) => {
+                if (result.isConfirmed) router.push('/login');
+            });
+        }
+
+        if (isSelf) return toast.error("You cannot connect with yourself");
+
+        setLocalLoading(true);
+
+        try {
+            const result = await sendRequest(profileId, session.accessToken);
+
+            if (result) {
+                setConnectionStatus("PENDING");
+                setConnectionDirection("sent");
+                
+                // Store in localStorage for persistence
+                localStorage.setItem(`connection_${profileId}`, JSON.stringify({
+                    status: "PENDING",
+                    direction: "sent",
+                    timestamp: Date.now()
+                }));
+                
+                toast.success("Connection request sent!");
+            }
+        } catch (error: any) {
+            // Handle Limits
+            if (error.statusCode === 403 || error.message?.toLowerCase().includes("limit reached")) {
+                return Swal.fire({
+                    title: 'Limit Reached!',
+                    text: error.message || 'You have reached your free connection limit.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Upgrade Plan',
+                    confirmButtonColor: '#f97316',
+                    cancelButtonColor: '#78716c',
+                    customClass: { popup: 'rounded-2xl' }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        setIsPricingOpen(true);
+                    }
+                });
+            }
+            
+            // Handle Conflicts (Already Exists)
+            if (error.statusCode === 409 || error.message?.includes("already exists")) {
+                setConnectionStatus("PENDING");
+                setConnectionDirection("sent");
+                localStorage.setItem(`connection_${profileId}`, JSON.stringify({
+                    status: "PENDING",
+                    direction: "sent",
+                    timestamp: Date.now()
+                }));
+                return toast.info("Request already sent.");
+            }
+
+            toast.error(error.message || "Failed to send request.");
+        } finally {
+            setLocalLoading(false);
+        }
+    };
+
+    // Clear localStorage when connection is accepted
+    useEffect(() => {
+        if (connectionStatus === "ACCEPTED" && profileId) {
+            localStorage.removeItem(`connection_${profileId}`);
+        }
+    }, [connectionStatus, profileId]);
 
     if (loading) return <ProfileSkeleton />
 
@@ -169,6 +247,11 @@ const PublicViewProfileComponent = ({ traveler }: PublicViewProfileProps) => {
             </Link>
         </div>
     )
+
+    const isLoading = localLoading || isConnectionLoading;
+    const isPending = connectionStatus === "PENDING";
+    const isAccepted = connectionStatus === "ACCEPTED";
+    const isIncomingRequest = connectionStatus === "PENDING" && connectionDirection === "received";
 
     return (
         <div className="min-h-screen bg-stone-50 pb-20">
@@ -198,6 +281,25 @@ const PublicViewProfileComponent = ({ traveler }: PublicViewProfileProps) => {
                             {user.rating > 4.5 && <CheckCircle className="text-green-500 h-6 w-6" />}
                         </div>
                         <p className="text-stone-500 text-lg">{user.email}</p>
+                        
+                        {/* Show connection status badge */}
+                        {connectionStatus && (
+                            <div className="mt-2">
+                                <Badge 
+                                    variant="outline" 
+                                    className={`
+                                        ${connectionStatus === 'PENDING' ? 'bg-amber-50 text-amber-700 border-amber-200' : ''}
+                                        ${connectionStatus === 'ACCEPTED' ? 'bg-green-50 text-green-700 border-green-200' : ''}
+                                        ${connectionStatus === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-200' : ''}
+                                    `}
+                                >
+                                    {connectionStatus === 'PENDING' && isIncomingRequest && 'Request Received'}
+                                    {connectionStatus === 'PENDING' && !isIncomingRequest && 'Request Sent'}
+                                    {connectionStatus === 'ACCEPTED' && 'Connected'}
+                                    {connectionStatus === 'REJECTED' && 'Rejected'}
+                                </Badge>
+                            </div>
+                        )}
                     </div>
 
                     {/* CONNECTION BUTTON */}
@@ -206,14 +308,35 @@ const PublicViewProfileComponent = ({ traveler }: PublicViewProfileProps) => {
                             <Button
                                 variant={isPending || isAccepted ? "secondary" : "default"}
                                 size="lg"
-                                className={!isPending && !isAccepted ? "bg-orange-500 hover:bg-orange-600 text-white" : "bg-stone-200 text-stone-600"}
+                                className={`
+                                    ${isPending ? "bg-stone-200 text-stone-600 hover:bg-stone-300" : ""}
+                                    ${isAccepted ? "bg-green-100 text-green-700 hover:bg-green-200" : ""}
+                                    ${!isPending && !isAccepted ? "bg-orange-500 hover:bg-orange-600 text-white" : ""}
+                                `}
                                 onClick={handleConnectClick}
                                 disabled={isLoading || isPending || isAccepted}
                             >
-                                {isLoading ? "Sending..." :
-                                    isAccepted ? "Buddy" :
-                                        isPending ? "Requested" :
-                                            <span className="flex items-center gap-2"><UserPlus className="h-4 w-4" /> Request Buddy</span>}
+                                {isLoading ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        Sending...
+                                    </>
+                                ) : isAccepted ? (
+                                    <>
+                                        <CheckCircle className="h-4 w-4 mr-2" />
+                                        Buddy
+                                    </>
+                                ) : isPending ? (
+                                    <>
+                                        <Clock className="h-4 w-4 mr-2" />
+                                        {isIncomingRequest ? 'Respond' : 'Requested'}
+                                    </>
+                                ) : (
+                                    <>
+                                        <UserPlus className="h-4 w-4 mr-2" />
+                                        Request Buddy
+                                    </>
+                                )}
                             </Button>
                         </div>
                     )}
@@ -311,9 +434,9 @@ const PublicViewProfileComponent = ({ traveler }: PublicViewProfileProps) => {
                     </div>
                 </div>
             </div>
-              {isPricingOpen && (
-                    <PaymentModal onClose={() => setIsPricingOpen(false)} />
-                  )}
+            {isPricingOpen && (
+                <PaymentModal onClose={() => setIsPricingOpen(false)} />
+            )}
         </div>
     )
 }

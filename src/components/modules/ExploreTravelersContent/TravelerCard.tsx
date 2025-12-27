@@ -1,10 +1,25 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
-import { UserPlus, MapPin, ArrowRight, CheckCircle2 } from 'lucide-react'
+import { 
+  UserPlus, 
+  MapPin, 
+  ArrowRight, 
+  CheckCircle2, 
+  Clock, 
+  Loader2,
+  Globe,
+  Languages,
+  CalendarDays,
+  Award,
+  Shield,
+  Plane,
+  Star
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -23,156 +38,440 @@ interface TravelerCardProps {
 }
 
 export function TravelerCard({ traveler, index }: TravelerCardProps) {
-  const { sendRequest, isLoading } = useConnection();
+  const { sendRequest, isLoading: isConnectionLoading } = useConnection();
   const router = useRouter();
   const { data: session } = useSession();
 
-  const [isSent, setIsSent] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
+  const [connectionDirection, setConnectionDirection] = useState<string | null>(null);
   const [isPricingOpen, setIsPricingOpen] = useState(false);
+  const [localLoading, setLocalLoading] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
-  // 1. Target the correct user object (Handling nested TravelPlan responses)
-  const userObj = traveler.user || traveler;
-  const profileId = userObj.id || traveler.userId;
-  const isSelf = session?.user?.id === profileId;
+  // Memoized calculations
+  const userObj = useMemo(() => traveler.user || traveler, [traveler]);
+  
+  // Safely access properties with type guards
+  const isPremium = useMemo(() => {
+    const user = userObj as any;
+    return user.premium === true || user.isPremium === true;
+  }, [userObj]);
 
-  // 2. Logic for Persistence: Check DB status fetched via getAllTravelPlans
-  // Ensure your backend includes sentConnections/receivedConnections filtered by current user
-  const dbStatus = 
-    userObj.sentConnections?.[0]?.status || 
-    userObj.receivedConnections?.[0]?.status;
+  const isVerified = useMemo(() => {
+    const user = userObj as any;
+    return user.verified === true || user.isVerified === true;
+  }, [userObj]);
 
-  const isPending = dbStatus === "PENDING" || isSent;
-  const isAccepted = dbStatus === "ACCEPTED";
+  const profileId = useMemo(() => {
+    const id = userObj.id || traveler.userId || traveler.id;
+    return id || '';
+  }, [userObj, traveler.userId, traveler.id]);
 
+  const isSelf = useMemo(() =>
+    session?.user?.id === profileId,
+    [session?.user?.id, profileId]
+  );
+
+  const visitedCountriesCount = useMemo(() => {
+    const user = userObj as any;
+    return user.visitedCountries?.length || user.visitedCountriesCount || 0;
+  }, [userObj]);
+
+  const interestsCount = useMemo(() => {
+    const user = userObj as any;
+    return user.interests?.length || user.interestsCount || 0;
+  }, [userObj]);
+
+  const rating = useMemo(() => {
+    const user = userObj as any;
+    return user.rating || 0;
+  }, [userObj]);
+
+  const isExpert = useMemo(() => 
+    userObj.role === 'ADMIN' || isVerified || rating >= 4.5,
+    [userObj.role, isVerified, rating]
+  );
+
+  const badgeColor = useMemo(() => {
+    if (isExpert) return 'bg-linear-to-r from-purple-600 to-indigo-600';
+    if (isPremium) return 'bg-linear-to-r from-amber-500 to-orange-500';
+    return 'bg-linear-to-r from-blue-500 to-cyan-500';
+  }, [isExpert, isPremium]);
+
+  const badgeText = useMemo(() => {
+    if (isExpert) return 'Expert';
+    if (isPremium) return 'Premium';
+    return 'Traveler';
+  }, [isExpert, isPremium]);
+
+  const badgeIcon = useMemo(() => {
+    if (isExpert) return <Award className="h-3 w-3" />;
+    if (isPremium) return <Shield className="h-3 w-3" />;
+    return <Plane className="h-3 w-3" />;
+  }, [isExpert, isPremium]);
+
+  // Initialize connection status
+  useEffect(() => {
+    if (!userObj) return;
+
+    const currentUserId = session?.user?.id;
+    const user = userObj as any;
+
+    // Priority 1: traveler.connectionStatus (from parent)
+    if (traveler.connectionStatus) {
+      setConnectionStatus(traveler.connectionStatus);
+      setConnectionDirection(traveler.connectionDirection || null);
+      return;
+    }
+
+    // Priority 2: connectionInfo
+    if (user.connectionInfo) {
+      setConnectionStatus(user.connectionInfo.status);
+      setConnectionDirection(user.connectionInfo.direction);
+      return;
+    }
+
+    // Priority 3: Check connections arrays
+    if (user.receivedConnections && user.receivedConnections.length > 0 && currentUserId) {
+      const connectionFromCurrentUser = user.receivedConnections.find(
+        (conn: any) => conn.senderId === currentUserId
+      );
+      if (connectionFromCurrentUser) {
+        setConnectionStatus(connectionFromCurrentUser.status);
+        setConnectionDirection('sent');
+        return;
+      }
+    }
+
+    if (user.sentConnections && user.sentConnections.length > 0 && currentUserId) {
+      const connectionToCurrentUser = user.sentConnections.find(
+        (conn: any) => conn.receiverId === currentUserId
+      );
+      if (connectionToCurrentUser) {
+        setConnectionStatus(connectionToCurrentUser.status);
+        setConnectionDirection('received');
+        return;
+      }
+    }
+
+    // Default: no connection
+    setConnectionStatus(null);
+    setConnectionDirection(null);
+  }, [userObj, traveler.connectionStatus, traveler.connectionDirection, session?.user?.id]);
+
+  // Handle connect request
   const handleConnectClick = async () => {
-    // Unauthenticated Check
-    if (!session?.accessToken) {
+    // Authentication check
+    if (!session?.user || !session.accessToken) {
       return Swal.fire({
         title: 'Login Required',
-        text: 'You must be logged in to connect with other travelers.',
+        text: 'You need to log in to connect with travelers.',
         icon: 'info',
         showCancelButton: true,
         confirmButtonText: 'Log In',
-        confirmButtonColor: '#f97316',
+        confirmButtonColor: '#8b5cf6',
+        background: '#1c1917',
+        color: '#fafaf9',
+        customClass: { popup: 'rounded-2xl border border-stone-700' }
       }).then((result) => {
         if (result.isConfirmed) router.push('/login');
       });
     }
 
-    if (isSelf) return toast.error("You cannot connect with yourself");
+    if (isSelf) return toast.error("You can't connect with yourself");
+    if (!profileId) return toast.error("Unable to connect: Invalid Profile ID");
+
+    setLocalLoading(true);
 
     try {
       const result = await sendRequest(profileId, session.accessToken);
 
       if (result) {
-        setIsSent(true);
+        setConnectionStatus("PENDING");
+        setConnectionDirection("sent");
+
+        // Store for persistence
+        localStorage.setItem(`connection_${profileId}`, JSON.stringify({
+          status: "PENDING",
+          direction: "sent",
+          timestamp: Date.now()
+        }));
+
         toast.success("Connection request sent!");
-        
-        // ✅ CRITICAL: Sync server data immediately
-        // This forces Next.js to re-fetch the list, updating userObj.sentConnections
-        router.refresh(); 
       }
     } catch (error: any) {
-      // Handle Limits
-      if (error.statusCode === 403 || error.message?.toLowerCase().includes("limit reached")) {
+      // Handle limits
+      if (error?.statusCode === 403 || error?.message?.toLowerCase().includes("limit")) {
         return Swal.fire({
-          title: 'Limit Reached!',
-          text: error.message || 'You have reached your free connection limit.',
+          title: 'Upgrade Required',
+          text: error.message || 'Connect with more travelers by upgrading your plan.',
           icon: 'warning',
           showCancelButton: true,
-          confirmButtonText: 'Upgrade Plan',
-          confirmButtonColor: '#f97316',
-          cancelButtonColor: '#78716c',
-          customClass: { popup: 'rounded-2xl' }
+          confirmButtonText: 'Upgrade',
+          confirmButtonColor: '#8b5cf6',
+          background: '#1c1917',
+          color: '#fafaf9',
+          customClass: { popup: 'rounded-2xl border border-stone-700' }
         }).then((result) => {
           if (result.isConfirmed) setIsPricingOpen(true);
         });
       }
 
-      // Handle Conflicts
-      if (error.statusCode === 409 || error.message?.includes("already exists")) {
-        setIsSent(true);
-        return toast.info("A request is already pending");
+      // Handle conflicts
+      if (error?.statusCode === 409) {
+        setConnectionStatus("PENDING");
+        setConnectionDirection("sent");
+        localStorage.setItem(`connection_${profileId}`, JSON.stringify({
+          status: "PENDING",
+          direction: "sent",
+          timestamp: Date.now()
+        }));
+        return toast.info("Request already sent");
       }
 
-      toast.error(error.message || "Failed to send request.");
+      toast.error(error?.message || "Failed to send request");
+    } finally {
+      setLocalLoading(false);
     }
   };
+
+  // Check localStorage for persisted status
+  useEffect(() => {
+    if (profileId && !connectionStatus) {
+      const stored = localStorage.getItem(`connection_${profileId}`);
+      if (stored) {
+        try {
+          const data = JSON.parse(stored);
+          // Keep for 1 hour
+          if (Date.now() - data.timestamp < 3600000) {
+            setConnectionStatus(data.status);
+            setConnectionDirection(data.direction);
+          } else {
+            localStorage.removeItem(`connection_${profileId}`);
+          }
+        } catch (error) {
+          console.error('Error parsing localStorage:', error);
+        }
+      }
+    }
+  }, [profileId, connectionStatus]);
+
+  // Clean up on accepted
+  useEffect(() => {
+    if (connectionStatus === "ACCEPTED" && profileId) {
+      localStorage.removeItem(`connection_${profileId}`);
+    }
+  }, [connectionStatus, profileId]);
+
+  const isLoading = localLoading || isConnectionLoading;
+  const isPending = connectionStatus === "PENDING";
+  const isAccepted = connectionStatus === "ACCEPTED";
+  // Fix: Ensure we correctly identify if I received the request
+  const isIncomingRequest = isPending && connectionDirection === "received";
+
+  // Safely get the user's name
+  const userName = useMemo(() => {
+    const user = userObj as any;
+    return user.name || user.fullName || 'Traveler';
+  }, [userObj]);
+
+  // Safely get the profile image
+  const profileImage = useMemo(() => {
+    const user = userObj as any;
+    return user.profileImage || user.avatar || user.image || '';
+  }, [userObj]);
+
+  // Safely get bio
+  const bio = useMemo(() => {
+    const user = userObj as any;
+    return user.bio || user.description || `Passionate traveler exploring the world.`;
+  }, [userObj]);
+
+  // Safely get location
+  const location = useMemo(() => {
+    const user = userObj as any;
+    return user.location || user.country || user.visitedCountries?.[0] || 'Global Explorer';
+  }, [userObj]);
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: index * 0.1 }}
+      transition={{ duration: 0.3, delay: index * 0.05 }}
+      whileHover={{ y: -4 }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
-      <Card className="group h-full overflow-hidden border-none shadow-sm hover:shadow-xl transition-all duration-300 bg-white rounded-2xl">
-        <div className="relative h-24 bg-gradient-to-r from-orange-100 to-amber-50">
-          <div className="absolute top-3 right-3">
-            <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm text-orange-700">
-              {userObj.role === 'ADMIN' ? 'Expert' : 'Traveler'}
-            </Badge>
-          </div>
+      <Card className="group relative h-full overflow-hidden border border-stone-200/50 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-2xl transition-all duration-300 rounded-2xl hover:bg-white hover:border-stone-300">
+        {/* FIX: Added pointer-events-none so this div doesn't block clicks 
+        */}
+        <div className={`absolute inset-0 bg-linear-to-br from-transparent via-white to-transparent transition-opacity duration-500 pointer-events-none ${isHovered ? 'opacity-30' : 'opacity-0'}`} />
+        
+        {/* Badge in corner */}
+        <div className="absolute top-4 right-4 z-10">
+          <Badge className={`${badgeColor} text-white border-0 shadow-lg flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold`}>
+            {badgeIcon}
+            {badgeText}
+          </Badge>
         </div>
 
-        <CardContent className="pt-0 pb-6 px-6 relative">
-          <div className="relative -mt-12 mb-4 flex justify-between items-end">
-            <Avatar className="h-24 w-24 border-4 border-white shadow-lg">
-              <AvatarImage src={userObj.profileImage} alt={userObj.name} className="object-cover" />
-              <AvatarFallback className="bg-stone-200 text-stone-500 text-xl font-bold">
-                {userObj.name?.charAt(0).toUpperCase()}
+        {/* Rating badge */}
+        {rating > 0 && (
+          <div className="absolute top-4 left-4 z-10">
+            <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm text-stone-700 border border-stone-200 shadow-sm flex items-center gap-1 px-2.5 py-1 text-xs">
+              <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+              {rating.toFixed(1)}
+            </Badge>
+          </div>
+        )}
+
+        <CardContent className="pt-8 pb-4 px-6 relative">
+          {/* Avatar with decorative background */}
+          <div className="relative -mt-6 mb-6 flex justify-center">
+            <div className="absolute -inset-4 bg-linear-to-r from-purple-100 to-blue-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <Avatar className="relative h-20 w-20 border-4 border-white shadow-xl ring-2 ring-white/50">
+              <AvatarImage 
+                src={profileImage} 
+                alt={userName}
+                className="object-cover"
+              />
+              <AvatarFallback className="bg-linear-to-br from-stone-200 to-stone-300 text-stone-600 text-xl font-bold">
+                {userName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
           </div>
 
-          <div className="space-y-3">
+          {/* User Info */}
+          <div className="space-y-4 text-center">
             <div>
-              <h3 className="text-lg font-bold text-stone-900 line-clamp-1">{userObj.name}</h3>
-              <div className="flex items-center text-xs text-stone-500 mt-1">
-                <MapPin className="h-3 w-3 mr-1" />
-                {userObj.visitedCountries?.[0] || 'Global Citizen'}
+              <h3 className="text-xl font-bold text-stone-900 line-clamp-1">
+                {userName}
+              </h3>
+              <div className="flex items-center justify-center text-sm text-stone-500 mt-1 gap-1">
+                <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+                <span className="line-clamp-1">
+                  {location}
+                </span>
               </div>
             </div>
 
-            <p className="text-sm text-stone-500 line-clamp-2 min-h-[40px]">
-              {userObj.bio || `Hi, I'm ${userObj.name}!`}
+            {/* Bio */}
+            <p className="text-sm text-stone-600 line-clamp-2 min-h-[40px] leading-relaxed">
+              {bio}
             </p>
 
-            <CardFooter className="grid grid-cols-2 gap-2 p-4 bg-stone-50/50 border-t border-stone-100">
-              <Button
-                variant={isPending || isAccepted ? "secondary" : "outline"}
-                size="sm"
-                className={`w-full text-xs cursor-pointer transition-all ${
-                  isPending ? "bg-stone-200 text-stone-600" : ""
-                }`}
-                onClick={handleConnectClick}
-                disabled={isLoading || isPending || isAccepted || isSelf}
-              >
-                {isLoading ? (
-                  "Sending..."
-                ) : isAccepted ? (
-                  <>
-                    <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-green-600" />
-                    Buddy
-                  </>
-                ) : isPending ? (
-                  "Requested"
-                ) : (
-                  <>
-                    <UserPlus className="h-3.5 w-3.5 mr-1" />
-                    Connect
-                  </>
-                )}
-              </Button>
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-stone-100">
+              <div className="text-center">
+                <div className="font-bold text-stone-900">{visitedCountriesCount}</div>
+                <div className="text-xs text-stone-500 flex items-center justify-center gap-1">
+                  <Globe className="h-3 w-3" />
+                  Countries
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="font-bold text-stone-900">{interestsCount}</div>
+                <div className="text-xs text-stone-500 flex items-center justify-center gap-1">
+                  <Languages className="h-3 w-3" />
+                  Interests
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="font-bold text-stone-900">{userObj.role === 'ADMIN' ? 'Expert' : 'Traveler'}</div>
+                <div className="text-xs text-stone-500 flex items-center justify-center gap-1">
+                  <CalendarDays className="h-3 w-3" />
+                  Status
+                </div>
+              </div>
+            </div>
 
-              <Link href={`/PublicVisitProfile/${profileId}`} className="w-full">
-                <Button size="sm" className="cursor-pointer w-full text-xs bg-orange-500 hover:bg-orange-600 text-white border-none shadow-sm">
-                  Profile <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                </Button>
-              </Link>
-            </CardFooter>
+            {/* Connection Status Badge */}
+            {connectionStatus && (
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="pt-2"
+              >
+                <Badge
+                  variant="outline"
+                  className={`
+                    w-full justify-center py-2 border font-medium
+                    ${isPending ? 'bg-amber-50 text-amber-700 border-amber-200' : ''}
+                    ${isAccepted ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : ''}
+                    ${connectionStatus === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-200' : ''}
+                  `}
+                >
+                  {isIncomingRequest && <Clock className="h-3.5 w-3.5 mr-1.5" />}
+                  {!isIncomingRequest && isPending && <Clock className="h-3.5 w-3.5 mr-1.5" />}
+                  {isAccepted && <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />}
+                  
+                  {isIncomingRequest && 'Request Received'}
+                  {!isIncomingRequest && isPending && 'Request Sent'}
+                  {isAccepted && 'Connected'}
+                  {connectionStatus === 'REJECTED' && 'Rejected'}
+                </Badge>
+              </motion.div>
+            )}
           </div>
         </CardContent>
+
+        {/* FIX: Added relative and z-10 to ensure buttons are clickable */}
+        <CardFooter className="relative z-10 p-5 pt-0 border-t border-stone-100 bg-linear-to-t from-stone-50/50 to-transparent">
+          <div className="grid grid-cols-2 gap-3 w-full">
+            {/* Connect Button */}
+            <Button
+              size="sm"
+              variant={"gradient"}
+              className={`
+                w-full text-sm font-medium transition-all duration-300
+                ${isAccepted 
+                  ? 'bg-linear-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white' 
+                  : isPending 
+                    ? 'bg-linear-to-r from-stone-200 to-stone-300 text-stone-700 hover:from-stone-300 hover:to-stone-400'
+                    : ''
+                }
+              `}
+              onClick={handleConnectClick}
+              disabled={isLoading || (isPending && !isIncomingRequest) || isAccepted || isSelf || !profileId}
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : isAccepted ? (
+                <>
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Connected
+                </>
+              ) : isPending ? (
+                <>
+                  <Clock className="h-4 w-4 mr-2" />
+                  {isIncomingRequest ? 'Respond' : 'Pending'}
+                </>
+              ) : (
+                <>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Connect
+                </>
+              )}
+            </Button>
+
+            {/* View Profile Button */}
+            {/* Removed prefetch={false} to ensure standard behavior */}
+            <Link href={`/PublicVisitProfile/${profileId}`} className="w-full">
+              <Button
+                size="sm"
+                variant="outline"
+                className="cursor-pointer w-full text-sm font-medium border-stone-300 text-stone-700 hover:bg-stone-100 hover:text-stone-900 hover:border-stone-400 transition-all duration-300"
+                disabled={!profileId}
+              >
+                Profile
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </Link>
+          </div>
+        </CardFooter>
       </Card>
+
+      {/* Payment Modal */}
       {isPricingOpen && (
         <PaymentModal onClose={() => setIsPricingOpen(false)} />
       )}

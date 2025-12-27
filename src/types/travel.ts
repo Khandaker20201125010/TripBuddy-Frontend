@@ -31,6 +31,7 @@ export interface TravelPlanFormData {
 export interface Traveler {
   id: string;
   userId?: string;
+  user?: User;
   name: string;
   handle: string;
   avatar: string;
@@ -40,8 +41,15 @@ export interface Traveler {
   visitedCountries?: string[];
   interests: string[];
   role?: 'USER' | 'ADMIN';
-  sentConnections?: { status: string }[];
-  receivedConnections?: { status: string }[];
+  sentConnections?: { id: string; senderId: string; receiverId: string; status: string }[];
+  receivedConnections?: { id: string; senderId: string; receiverId: string; status: string }[];
+    connectionInfo?: {
+    id: string;
+    status: string;
+    direction: 'sent' | 'received';
+  };
+  connectionStatus?: string | null;
+  connectionDirection?: string | null;
   rating: number;
   online: boolean;
   verified: boolean;
@@ -50,4 +58,5 @@ export interface Traveler {
   startDate?: string;
   endDate?: string;
   budget?: number;
+   status?: string;
 }
