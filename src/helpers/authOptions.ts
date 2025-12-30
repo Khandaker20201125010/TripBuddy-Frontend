@@ -17,16 +17,14 @@ async function refreshAccessToken(token: JWT) {
     const refreshedTokens = await response.json();
 
     if (!response.ok) {
-      throw refreshedTokens;
+      throw new Error(refreshedTokens.message || "Failed to refresh token");
     }
 
     return {
       ...token,
       accessToken: refreshedTokens.data.accessToken,
-      // Fall back to old refresh token if backend doesn't rotate it
-      refreshToken: refreshedTokens.data.refreshToken ?? token.refreshToken, 
-      // Set expiration time (current time + 1 hour - 1 minute buffer)
-      accessTokenExpires: Date.now() + 60 * 60 * 1000 - 60000, 
+      refreshToken: refreshedTokens.data.refreshToken ?? token.refreshToken,
+      accessTokenExpires: Date.now() + 60 * 60 * 1000 - 60000,
     };
   } catch (error) {
     console.error("RefreshAccessTokenError", error);
@@ -50,29 +48,49 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/auth/login`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(credentials),
-          }
-        );
-        const result = await res.json();
-
-        if (res.ok && result.data) {
-          return {
-            id: String(result.data.user.id),
-            name: result.data.user.name,
-            email: result.data.user.email,
-            role: result.data.user.role,
-            premium: result.data.user.premium,
-            subscriptionType: result.data.user.subscriptionType,
-            accessToken: result.data.accessToken,
-            refreshToken: result.data.refreshToken,
-          };
+        if (!credentials?.email || !credentials?.password) {
+          throw new Error("Email and password are required");
         }
-        return null;
+
+        try {
+          const res = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/auth/login`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(credentials),
+            }
+          );
+          
+          const result = await res.json();
+
+          if (!res.ok) {
+            throw new Error(result.message || "Login failed");
+          }
+
+          if (res.ok && result.data) {
+            return {
+              id: String(result.data.user.id),
+              name: result.data.user.name,
+              email: result.data.user.email,
+              role: result.data.user.role,
+              premium: result.data.user.premium,
+              subscriptionType: result.data.user.subscriptionType,
+              accessToken: result.data.accessToken,
+              refreshToken: result.data.refreshToken,
+            };
+          }
+          
+          return null;
+        } catch (error: any) {
+          console.error("Authorize error:", error);
+          
+          if (error.message.includes("Network")) {
+            throw new Error("Network error. Please check your connection.");
+          }
+          
+          throw new Error(error.message || "Login failed. Please try again.");
+        }
       },
     }),
   ],
@@ -80,12 +98,11 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, account }) {
       // 1. Initial Login
       if (account && user) {
-        // Calculate expiration: Now + 1 hour (from backend logic)
-        const expiresIn = 60 * 60 * 1000; 
+        const expiresIn = 60 * 60 * 1000;
         
         // Handle Google Login Sync
         if (account.provider === "google") {
-           try {
+          try {
             const res = await fetch(
               `${process.env.NEXT_PUBLIC_API_URL}/auth/login/google`,
               {
@@ -98,7 +115,9 @@ export const authOptions: NextAuthOptions = {
                 }),
               }
             );
+            
             const result = await res.json();
+            
             if (res.ok && result.data) {
               return {
                 ...token,
@@ -110,32 +129,34 @@ export const authOptions: NextAuthOptions = {
                 refreshToken: result.data.refreshToken,
                 accessTokenExpires: Date.now() + expiresIn,
               };
+            } else {
+              throw new Error(result.message || "Google login failed");
             }
-          } catch (error) {
+          } catch (error: any) {
             console.error("Google Sync Error:", error);
+            throw new Error(error.message || "Google login failed");
           }
         }
 
-        // Handle Credentials Login (user object already has tokens from authorize)
+        // Handle Credentials Login
         return {
           ...token,
           id: user.id,
           role: user.role,
           premium: user.premium,
           subscriptionType: user.subscriptionType,
-          accessToken: user.accessToken,
+          accessToken: (user as any).accessToken,
           refreshToken: (user as any).refreshToken,
           accessTokenExpires: Date.now() + expiresIn,
         };
       }
 
-      // 2. Return previous token if the access token has not expired yet
-      // We assume `accessTokenExpires` exists. If not, we might trigger refresh or force logout
+      // 2. Return previous token if still valid
       if (token.accessTokenExpires && Date.now() < (token.accessTokenExpires as number)) {
         return token;
       }
 
-      // 3. Access token has expired, try to update it
+      // 3. Refresh token if expired
       return refreshAccessToken(token);
     },
     async session({ session, token }: any) {
@@ -144,11 +165,15 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role;
         session.user.premium = token.premium;
         session.user.subscriptionType = token.subscriptionType;
-        session.accessToken = token.accessToken; // Valid, refreshed token
-        session.error = token.error; // Pass error to client if refresh failed
+        session.accessToken = token.accessToken;
+        session.error = token.error;
       }
       return session;
     },
+  },
+  pages: {
+    signIn: '/login',
+    error: '/login', // Redirect to login page on errors
   },
   session: { strategy: "jwt" },
   secret: process.env.AUTH_SECRET,

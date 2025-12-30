@@ -1,73 +1,113 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
 
-import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react'; // 1. Import NextAuth hook
+import { useEffect, useState, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
 
 export function useRecommendedTravelers() {
-  const { data: session, status } = useSession(); // 2. Get session data
+  const { data: session, status } = useSession();
   const [recommendedTravelers, setRecommendedTravelers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Wait for session to load before fetching
-    if (status === "loading") return;
+  const fetchRecommended = useCallback(async () => {
+    // Reset states
+    setLoading(true);
+    setError(null);
+    
+    // Don't fetch if user is not authenticated
+    if (status !== 'authenticated' || !session) {
+      setRecommendedTravelers([]);
+      setLoading(false);
+      return;
+    }
 
-    const fetchRecommended = async () => {
-      setLoading(true);
-      try {
-        // 3. Get token from Session OR fall back to empty (backend might use cookies)
-        // Note: Your authOptions maps token.accessToken to session.accessToken
-        const token = (session as any)?.accessToken; 
+    try {
+      const token = (session as any)?.accessToken;
 
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/travelPlan/recommended`, {
-           headers: {
-             // If we have a session token, use it. Otherwise, send empty string.
-             'Authorization': token ? `Bearer ${token}` : '',
-             'Content-Type': 'application/json'
-           },
-           // 4. IMPORTANT: This allows the browser to send the 'accessToken' cookie 
-           // that your backend set in the Login controller.
-           credentials: 'include', 
-        });
-        
-        const result = await res.json();
-        
-        if (!result.success) {
-            // Use a soft error so we don't crash, just show nothing
-            console.warn("Recommended API Error:", result.message);
-            setRecommendedTravelers([]);
-            return;
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/travelPlan/recommended`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+      });
+
+      // Check if response is OK
+      if (!res.ok) {
+        // Handle 401/403 - session expired
+        if (res.status === 401 || res.status === 403) {
+          setError('Session expired. Please login again.');
+          setRecommendedTravelers([]);
+          return;
         }
-
-        // 5. Handle Data Mapping
-        let rawData = [];
-        if (result?.data && Array.isArray(result.data)) {
-           rawData = result.data;
+        // Handle 500 errors - server error
+        if (res.status === 500) {
+          setError('Unable to load recommendations at this time.');
+          setRecommendedTravelers([]);
+          return;
         }
-
-        const mapped = rawData.map((user: any) => ({
-          id: user.id,
-          name: user.name || 'Traveler',
-          // Handle both Cloudinary URLs and local paths
-          avatar: user.profileImage || '/default-avatar.png', 
-          bio: user.bio || 'Ready to explore.',
-          interests: user.interests || [],
-          location: user.visitedCountries?.[0] || 'Global',
-          rating: user.rating || 0,
-        }));
-
-        setRecommendedTravelers(mapped);
-      } catch (err) {
-        console.error("Recommended Hook Error:", err);
-        setRecommendedTravelers([]);
-      } finally {
-        setLoading(false);
+        // Handle other errors
+        throw new Error(`HTTP error! status: ${res.status}`);
       }
-    };
 
-    fetchRecommended();
-  }, [session, status]); // Re-run when session changes
+      const result = await res.json();
+      
+      if (!result.success) {
+        // Use a soft error so we don't crash, just show nothing
+        console.warn("Recommended API Error:", result.message);
+        setRecommendedTravelers([]);
+        return;
+      }
 
-  return { recommendedTravelers, loading };
+      // Handle Data Mapping
+      let rawData = [];
+      if (result?.data && Array.isArray(result.data)) {
+        rawData = result.data;
+      }
+
+      const mapped = rawData.map((user: any) => ({
+        id: user.id,
+        name: user.name || 'Traveler',
+        avatar: user.profileImage || '/default-avatar.png',
+        bio: user.bio || 'Ready to explore.',
+        interests: user.interests || [],
+        location: user.visitedCountries?.[0] || 'Global',
+        rating: user.rating || 0,
+      }));
+
+      setRecommendedTravelers(mapped);
+    } catch (err: any) {
+      console.error("Recommended Hook Error:", err);
+      setError(err.message || 'Failed to load recommendations');
+      setRecommendedTravelers([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [session, status]);
+
+  // Initial fetch - only when authenticated
+  useEffect(() => {
+    // If session is still loading, wait
+    if (status === 'loading') {
+      return;
+    }
+
+    if (status === 'authenticated' && session) {
+      fetchRecommended();
+    } else {
+      // Clear recommendations when not authenticated
+      setRecommendedTravelers([]);
+      setLoading(false);
+      setError(null);
+    }
+  }, [fetchRecommended, session, status]);
+
+  return { 
+    recommendedTravelers, 
+    loading, 
+    error,
+    isAuthenticated: status === 'authenticated',
+    status // Add status for finer control
+  };
 }

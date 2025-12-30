@@ -27,10 +27,12 @@ export function BrowseByRegion() { // Removed onSelectRegion prop
                             className="relative h-24 rounded-lg overflow-hidden"
                         >
                             <Image
-                                fill
                                 src={region.image}
                                 alt={region.name}
-                                className="absolute inset-0 w-full h-full object-cover"
+                                fill
+                                sizes="(max-width: 768px) 50vw, 25vw"
+                                className="object-cover"
+                                priority={false}
                             />
                             {/* Overlay stays static */}
                             <div className="absolute inset-0 bg-black/50" />

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { ChevronLeft, ChevronRight, Loader2, Search, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SearchFilters, TravelerFilters } from './SearchFilters'
@@ -19,7 +19,14 @@ export function ExploreTravelersPageContent() {
   
   const itemsPerPage = 6
 
-  const { recommendedTravelers, loading: recLoading } = useRecommendedTravelers()
+  const { 
+    recommendedTravelers, 
+    loading: recLoading, 
+    error,
+    isAuthenticated,
+    status: recStatus 
+  } = useRecommendedTravelers()
+  
   const { travelers, loading, meta } = useTravelers(filters, currentPage, itemsPerPage)
 
   const totalPages = Math.ceil((meta?.total || 0) / itemsPerPage)
@@ -36,6 +43,13 @@ export function ExploreTravelersPageContent() {
       exploreSection.scrollIntoView({ behavior: 'smooth' })
     }
   }
+
+  // Create a memoized retry function
+  const handleRetryRecommendations = useCallback(() => {
+    // This would be implemented if we exposed a refresh function
+    // For now, we'll just reload the page
+    window.location.reload()
+  }, [])
 
   return (
     <div className="min-h-screen bg-stone-50">
@@ -56,7 +70,7 @@ export function ExploreTravelersPageContent() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
               </span>
-              <span className="text-sm font-medium text-orange-700">Join {meta?.total} travelers worldwide</span>
+              <span className="text-sm font-medium text-orange-700">Join {meta?.total || 0} travelers worldwide</span>
             </div>
 
             {/* Main Heading */}
@@ -127,7 +141,14 @@ export function ExploreTravelersPageContent() {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Left Main Content */}
           <div className="flex-1">
-            <RecommendedSection travelers={recommendedTravelers} loading={recLoading} />
+            {/* Recommended Section with all props */}
+            <RecommendedSection 
+              travelers={recommendedTravelers} 
+              loading={recLoading || recStatus === 'loading'} 
+              error={error}
+              isAuthenticated={isAuthenticated}
+              onRetry={handleRetryRecommendations}
+            />
 
             <div id="explore-travelers" className="my-8 scroll-mt-10">
               <div className="flex items-center justify-between mb-6">
@@ -163,7 +184,7 @@ export function ExploreTravelersPageContent() {
                       </Button>
 
                       <div className="flex items-center gap-1">
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((page) => (
                           <Button
                             key={page}
                             variant={currentPage === page ? "default" : "outline"}
@@ -174,6 +195,19 @@ export function ExploreTravelersPageContent() {
                             {page}
                           </Button>
                         ))}
+                        {totalPages > 5 && (
+                          <>
+                            <span className="px-2">...</span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePageChange(totalPages)}
+                              className={`w-9 h-9 ${currentPage === totalPages ? 'bg-orange-600 hover:bg-orange-700 text-white' : ''}`}
+                            >
+                              {totalPages}
+                            </Button>
+                          </>
+                        )}
                       </div>
 
                       <Button
@@ -189,10 +223,14 @@ export function ExploreTravelersPageContent() {
                 </>
               ) : (
                 <div className="text-center py-20 bg-white rounded-xl border border-dashed border-stone-200">
-                  <p className="text-stone-500">No travelers found matching your criteria.</p>
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-stone-100 flex items-center justify-center">
+                    <Search className="h-8 w-8 text-stone-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-stone-900 mb-2">No travelers found</h3>
+                  <p className="text-stone-500 mb-4">Try adjusting your search filters</p>
                   <Button
-                    variant="link"
-                    className="text-orange-600 mt-2"
+                    variant="outline"
+                    className="border-stone-300 hover:bg-stone-50"
                     onClick={() => handleFilterChange({})}
                   >
                     Clear all filters
@@ -204,16 +242,13 @@ export function ExploreTravelersPageContent() {
 
           {/* Right Sidebar */}
           <aside className="w-full lg:w-80 space-y-8">
-            {/* FIXED: Removed the travelers prop because these components fetch their own data internally */}
             <TopRatedSection />
             <RecentlyActiveSection />
             <BrowseByRegion />
             <Subscription />
-         
           </aside>
         </div>
       </main>
-      
     </div>
   )
 }

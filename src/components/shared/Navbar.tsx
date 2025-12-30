@@ -12,7 +12,6 @@ import Image from 'next/image'
 import { Button } from '../ui/button'
 import { setCookie, deleteCookie } from '@/services/auth/tokenHandlers'
 
-
 import { useNotifications } from '@/hooks/connections/useNotifications'
 import NotificationPanel from '../NotificationIcon/NotificationPanel'
 
@@ -42,7 +41,9 @@ export function Navbar() {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const notificationRef = useRef<HTMLDivElement>(null)
   const userMenuRef = useRef<HTMLDivElement>(null)
-  const { totalNotifications } = useNotifications();
+  
+  // Get notifications with proper authentication check
+  const { totalNotifications, isAuthenticated: notificationsAuthenticated } = useNotifications();
 
   // Scroll effect
   useEffect(() => {
@@ -238,7 +239,8 @@ export function Navbar() {
                     onClick={() => setShowNotifications(!showNotifications)}
                   >
                     <Bell className="h-4 w-4 lg:h-5 lg:w-5 text-stone-700" />
-                    {totalNotifications > 0 && (
+                    {/* Only show notification badge if authenticated AND has notifications */}
+                    {notificationsAuthenticated && totalNotifications > 0 && (
                       <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full border-2 border-white flex items-center justify-center">
                         <span className="text-[10px] font-bold text-white">
                           {totalNotifications > 9 ? '9+' : totalNotifications}
@@ -352,7 +354,8 @@ export function Navbar() {
                     onClick={() => setShowNotifications(!showNotifications)}
                   >
                     <Bell className="h-4 w-4 text-stone-700" />
-                    {totalNotifications > 0 && (
+                    {/* Only show notification badge if authenticated AND has notifications */}
+                    {notificationsAuthenticated && totalNotifications > 0 && (
                       <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full border-2 border-white flex items-center justify-center">
                         <span className="text-[10px] font-bold text-white">
                           {totalNotifications > 9 ? '9+' : totalNotifications}
@@ -472,7 +475,7 @@ export function Navbar() {
                           <div className="flex items-center gap-2">
                             <Bell className="h-4 w-4" />
                             <span>
-                              {totalNotifications > 0 
+                              {notificationsAuthenticated && totalNotifications > 0 
                                 ? `${totalNotifications} notification${totalNotifications !== 1 ? 's' : ''}`
                                 : 'No notifications'
                               }

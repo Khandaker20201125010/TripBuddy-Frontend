@@ -2,14 +2,15 @@
 "use server";
 
 import { z } from "zod";
-import { loginTraveler } from "./loginTravler";
+
 const registerValidationZodSchema = z.object({
   name: z.string().min(1, { message: "Name is required" }),
-  email: z.email({ message: "Email is required" }),
+  email: z.string().email({ message: "Email is required" }),
   password: z.string().min(6, {
     message: "Password is required and must be at least 6 characters",
   }),
 });
+
 export const registerTraveler = async (
   currentState: any,
   formData: FormData
@@ -21,8 +22,7 @@ export const registerTraveler = async (
       password: formData.get("password"),
     };
 
-    const validationResult =
-      registerValidationZodSchema.safeParse(validatedField);
+    const validationResult = registerValidationZodSchema.safeParse(validatedField);
 
     if (!validationResult.success) {
       return {
@@ -34,14 +34,13 @@ export const registerTraveler = async (
       };
     }
 
-    // Prepare form data
+    // Prepare form data for registration
     const newFormData = new FormData();
     const file = formData.get("file") as File | null;
 
     if (file && file.size > 0) {
       newFormData.append("file", file);
     } else {
-      // Send empty string so Multer won't treat as a file
       newFormData.append("file", "");
     }
 
@@ -49,8 +48,9 @@ export const registerTraveler = async (
     newFormData.append("email", validatedField.email as string);
     newFormData.append("password", validatedField.password as string);
 
-    // Register
-    const res = await fetch(
+    // Register the user
+    console.log("Registering user...");
+    const registerRes = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/user/register`,
       {
         method: "POST",
@@ -58,28 +58,30 @@ export const registerTraveler = async (
       }
     );
 
-    const result = await res.json();
+    const registerResult = await registerRes.json();
+    console.log("Registration result:", registerResult);
 
-    if (!res.ok || !result.success) {
+    if (!registerRes.ok || !registerResult.success) {
+      console.error("Registration failed:", registerResult);
       return {
         success: false,
-        error:
-          typeof result.message === "string"
-            ? result.message
-            : JSON.stringify(result.message),
+        error: registerResult.message || "Registration failed. Please try again.",
       };
     }
 
-    // Auto login
-    const loginResult = await loginTraveler(currentState, formData);
-
+    // Return success with credentials for auto-login
     return {
       success: true,
-      redirect: loginResult.redirect,
-      role: loginResult.role,
+      email: validatedField.email as string,
+      password: validatedField.password as string,
+      message: "Account created successfully!",
     };
+
   } catch (err: any) {
-    console.log(err);
-    return { success: false, error: "Registration failed" };
+    console.error("Registration error:", err);
+    return { 
+      success: false, 
+      error: err.message || "Registration failed. Please try again." 
+    };
   }
 };

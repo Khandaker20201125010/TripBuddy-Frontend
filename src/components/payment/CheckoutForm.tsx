@@ -11,7 +11,7 @@ export default function CheckoutForm({ transactionId, amount, onSuccess, onClose
   const elements = useElements()
   const [isLoading, setIsLoading] = useState(false)
 
-const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!stripe || !elements) return
     setIsLoading(true)
@@ -49,6 +49,15 @@ const handleSubmit = async (e: React.FormEvent) => {
         <div className="p-6 overflow-y-auto">
           <form id="payment-form" onSubmit={handleSubmit}>
             <PaymentElement options={{ layout: 'accordion' }} />
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <p className="text-xs text-blue-700 font-medium mb-1">For testing:</p>
+              <p className="text-xs text-blue-600">
+                Use card: <span className="font-mono">4242 4242 4242 4242</span>
+              </p>
+              <p className="text-xs text-blue-600">
+                Exp: Any future date | CVC: Any 3 digits
+              </p>
+            </div>
             <button
               disabled={isLoading || !stripe || !elements}
               className="w-full mt-8 bg-teal-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-teal-700 transition-all shadow-lg shadow-teal-200 disabled:opacity-50"

@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
+import { getImageSrc } from "@/helpers/getImageSrc ";
 
 export default function ManageUsersComponent() {
   const [users, setUsers] = useState<any[]>([]);
@@ -131,7 +132,7 @@ export default function ManageUsersComponent() {
                     <div className="flex items-center gap-3">
                       <div className="relative w-10 h-10 rounded-full overflow-hidden border bg-slate-100">
                         <Image 
-                          src={user.profileImage || "/placeholder-user.png"} 
+                          src={getImageSrc(user.profileImage || "/placeholder-user.png")} 
                           alt={user.name || "user"} 
                           fill 
                           className="object-cover" 

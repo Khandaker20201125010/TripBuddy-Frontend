@@ -9,50 +9,130 @@ import { Button } from "../ui/button";
 import { Eye, EyeOff } from "lucide-react";
 import { FcGoogle } from 'react-icons/fc';
 import { signIn } from "next-auth/react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
-const LoginForm = ({ redirect }: { redirect?: string }) => {
+const LoginForm = () => {
   const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get("redirect");
   const [isPending, setIsPending] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{
+    email?: string;
+    password?: string;
+  }>({});
 
   const togglePassword = () => setShowPassword(!showPassword);
 
- const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
-  setIsPending(true);
+  const validateForm = (email: string, password: string): boolean => {
+    const errors: { email?: string; password?: string } = {};
+    let isValid = true;
 
-  const formData = new FormData(e.currentTarget);
-  const email = formData.get("email");
-  const password = formData.get("password");
+    // Reset errors
+    setError(null);
+    setFieldErrors({});
 
-  // Decode the URL properly and ensure it starts with a slash to stay on-site
-  const rawRedirect = searchParams.get("redirect");
-  const targetRedirect = rawRedirect ? decodeURIComponent(rawRedirect) : "/";
+    // Email validation
+    if (!email) {
+      errors.email = "Email is required";
+      isValid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.email = "Please enter a valid email address";
+      isValid = false;
+    }
 
-  const result = await signIn("credentials", {
-    email,
-    password,
-    redirect: false, 
-  });
+    // Password validation
+    if (!password) {
+      errors.password = "Password is required";
+      isValid = false;
+    } else if (password.length < 6) {
+      errors.password = "Password must be at least 6 characters";
+      isValid = false;
+    }
 
-  if (result?.error) {
-    // ... error handling
-  } else {
-    Swal.fire({
-      title: "Login Successful!",
-      icon: "success",
-      timer: 1200,
-      showConfirmButton: false,
-    });
+    if (!isValid) {
+      setFieldErrors(errors);
+    }
 
-    // Use window.location.replace to prevent the user from clicking "back" into the login form
-    setTimeout(() => {
-      window.location.replace(targetRedirect);
-    }, 1200);
-  }
-};
+    return isValid;
+  };
+
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+    setFieldErrors({});
+
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+
+    // Validate form
+    if (!validateForm(email, password)) {
+      return;
+    }
+
+    setIsPending(true);
+
+    // Decode the URL properly and ensure it starts with a slash to stay on-site
+    const rawRedirect = searchParams.get("redirect");
+    const targetRedirect = rawRedirect ? decodeURIComponent(rawRedirect) : "/";
+
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        // Handle different error types
+        let errorMessage = "Invalid email or password";
+        
+        if (result.error.includes("Network")) {
+          errorMessage = "Network error. Please check your connection.";
+        } else if (result.error.includes("fetch") || result.error.includes("API")) {
+          errorMessage = "Unable to connect to server. Please try again later.";
+        } else if (result.error.includes("CredentialsSignin")) {
+          errorMessage = "Invalid email or password. Please check your credentials.";
+        }
+        
+        setError(errorMessage);
+        
+        // Show error message
+        Swal.fire({
+          title: "Login Failed",
+          text: errorMessage,
+          icon: "error",
+          confirmButtonText: "Try Again",
+          confirmButtonColor: "#ef4444",
+          timer: 3000,
+          timerProgressBar: true,
+        });
+      } else {
+        Swal.fire({
+          title: "Login Successful!",
+          icon: "success",
+          timer: 1200,
+          showConfirmButton: false,
+        });
+
+        // Use window.location.replace to prevent the user from clicking "back" into the login form
+        setTimeout(() => {
+          window.location.replace(targetRedirect);
+        }, 1200);
+      }
+    } catch (err) {
+      console.error("Login error:", err);
+      setError("An unexpected error occurred. Please try again.");
+      Swal.fire({
+        title: "Error",
+        text: "An unexpected error occurred. Please try again.",
+        icon: "error",
+        confirmButtonText: "OK",
+      });
+    } finally {
+      setIsPending(false);
+    }
+  };
 
   return (
     <form onSubmit={handleLogin} className="space-y-4">
@@ -60,7 +140,19 @@ const LoginForm = ({ redirect }: { redirect?: string }) => {
         {/* Email */}
         <Field>
           <FieldLabel htmlFor="email">Email</FieldLabel>
-          <Input id="email" name="email" type="email" placeholder="m@example.com" required />
+          <Input 
+            id="email" 
+            name="email" 
+            type="email" 
+            placeholder="m@example.com" 
+            required 
+            className={fieldErrors.email ? "border-red-500 focus:ring-red-500" : ""}
+          />
+          {fieldErrors.email && (
+            <FieldDescription className="text-red-500 text-sm mt-1">
+              {fieldErrors.email}
+            </FieldDescription>
+          )}
         </Field>
 
         {/* Password */}
@@ -73,6 +165,7 @@ const LoginForm = ({ redirect }: { redirect?: string }) => {
               type={showPassword ? "text" : "password"}
               placeholder="Enter your password"
               required
+              className={fieldErrors.password ? "border-red-500 focus:ring-red-500" : ""}
             />
             <button
               type="button"
@@ -82,7 +175,20 @@ const LoginForm = ({ redirect }: { redirect?: string }) => {
               {showPassword ? <Eye className="text-orange-400" /> : <EyeOff className="text-orange-400" />}
             </button>
           </div>
+          {fieldErrors.password && (
+            <FieldDescription className="text-red-500 text-sm mt-1">
+              {fieldErrors.password}
+            </FieldDescription>
+          )}
         </Field>
+
+        {/* Error message for login failure */}
+        {error && !fieldErrors.email && !fieldErrors.password && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-600 text-sm font-medium">{error}</p>
+          </div>
+        )}
+
         {/* Submit Button */}
         <FieldGroup className="mt-6">
           <Button
@@ -91,7 +197,15 @@ const LoginForm = ({ redirect }: { redirect?: string }) => {
             type="submit"
             disabled={isPending}
           >
-            {isPending ? "Logging in..." : "Login"}
+            {isPending ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Logging in...
+              </span>
+            ) : "Login"}
           </Button>
         </FieldGroup>
 
@@ -108,9 +222,10 @@ const LoginForm = ({ redirect }: { redirect?: string }) => {
         <div className="w-full">
           <Button
             type="button"
-            variant="outline" // Changed to outline to differentiate from the main Login button
+            variant="outline"
             onClick={() => signIn("google", { callbackUrl: "/" })}
             className="flex items-center justify-center gap-3 h-11 w-full border-gray-200 hover:bg-gray-50 transition-all"
+            disabled={isPending}
           >
             <FcGoogle size={24} />
             <span className="text-gray-700 font-medium">Continue with Google</span>

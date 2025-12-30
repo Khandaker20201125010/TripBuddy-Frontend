@@ -126,7 +126,7 @@ export function EditProfileModal({ isOpen, onClose, user, onSuccess }: EditProfi
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={loading}>
+            <Button variant="gradient" type="submit" disabled={loading}>
               {loading ? "Saving..." : "Save Changes"}
             </Button>
           </div>

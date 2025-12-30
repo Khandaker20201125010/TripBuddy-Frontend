@@ -15,6 +15,7 @@ import { Edit3, Camera, Loader2 } from "lucide-react";
 import api from "@/lib/axios";
 import { toast } from "sonner";
 import Image from "next/image";
+import { getImageSrc } from "@/helpers/getImageSrc ";
 
 interface EditAdminModalProps {
   profile: any;
@@ -99,7 +100,7 @@ export default function EditAdminModal({ profile, onUpdate }: EditAdminModalProp
           <div className="flex flex-col items-center gap-2">
             <div className="relative w-24 h-24 group cursor-pointer">
               <Image 
-                src={previewImage || "/placeholder-user.png"} 
+                src={getImageSrc(previewImage || "/placeholder-user.png")} 
                 alt="Avatar" fill className="rounded-full object-cover border" 
               />
               <label htmlFor="img-up" className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">

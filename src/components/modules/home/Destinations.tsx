@@ -6,6 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useAllTravelPlans } from '@/hooks/travelshooks/useAllTravelPlans'
 import { Button } from '@/components/ui/button'
+import { getImageSrc } from '@/helpers/getImageSrc '
 
 
 export function Destinations() {
@@ -58,7 +59,8 @@ export function Destinations() {
                     <Image
                       width={600}
                       height={400}
-                      src={plan.image || '/placeholder-travel.jpg'} 
+                      
+                       src={getImageSrc(plan.image)}
                       alt={plan.destination}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                     />

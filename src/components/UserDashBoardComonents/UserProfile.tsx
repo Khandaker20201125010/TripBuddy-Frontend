@@ -13,7 +13,6 @@ import {
   Edit3,
   Globe,
   Mail,
-
   User as UserIcon,
   Map,
   Trophy,
@@ -27,7 +26,6 @@ import {
   Camera,
   UserCheck,
   UserPlus,
-
   UserX,
   Trash2,
   MoreVertical,
@@ -35,12 +33,17 @@ import {
   Plane,
   Compass,
   Heart,
-
   Target,
-
   Flag,
-
-  UserRoundSearch
+  UserRoundSearch,
+  Zap,
+  Crown,
+  Gem,
+  Award,
+  BadgeCheck,
+  ShieldCheck,
+  Shield,
+  Sparkles as SparklesIcon
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "@/lib/axios";
@@ -53,7 +56,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Rating } from "@/components/ui/Rating";
 import { EditProfileModal } from "@/components/ui/EditProfileModal";
-import { useConnection } from "@/hooks/connections/useConnection";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -63,18 +65,47 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { getImageSrc } from "@/helpers/getImageSrc ";
 
-
-type StatColor = "blue" | "emerald" | "amber" | "purple" | "indigo";
-
-interface StatCardProps {
-  icon: React.ReactNode;
-  label: string;
-  value: string | number;
-  subtext?: string;
-  color?: StatColor;
-  index: number;
-}
+// Subscription badge configuration
+const SUBSCRIPTION_BADGES = {
+  EXPLORER: {
+    icon: Zap,
+    label: 'Explorer',
+    verifiedLabel: 'Verified Explorer',
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-50',
+    borderColor: 'border-blue-200',
+    iconColor: 'text-blue-500',
+    linear: 'from-blue-400 to-blue-500',
+    badgeIcon: Shield,
+    level: 1
+  },
+  MONTHLY: {
+    icon: Crown,
+    label: 'Adventurer',
+    verifiedLabel: 'Verified Adventurer',
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-50',
+    borderColor: 'border-purple-200',
+    iconColor: 'text-purple-500',
+    linear: 'from-purple-500 to-purple-600',
+    badgeIcon: BadgeCheck,
+    level: 2
+  },
+  YEARLY: {
+    icon: Gem,
+    label: 'Globetrotter',
+    verifiedLabel: 'Verified Globetrotter',
+    color: 'text-orange-600',
+    bgColor: 'bg-orange-50',
+    borderColor: 'border-orange-200',
+    iconColor: 'text-orange-500',
+    linear: 'from-orange-500 to-amber-600',
+    badgeIcon: Award,
+    level: 3
+  }
+} as const;
 
 // Types based on your Prisma Schema
 interface UserProfile {
@@ -91,6 +122,9 @@ interface UserProfile {
   interests?: string[];
   location?: string;
   status?: 'ACTIVE' | 'INACTIVE';
+  premium?: boolean;
+  subscriptionType?: keyof typeof SUBSCRIPTION_BADGES;
+  subscriptionExpiresAt?: string;
 }
 
 interface Connection {
@@ -129,18 +163,110 @@ const staggerContainer = {
   }
 };
 
-const scaleIn = {
-  initial: { scale: 0.9, opacity: 0 },
-  animate: { scale: 1, opacity: 1 },
-  exit: { scale: 0.9, opacity: 0 }
+
+// Helper function to render subscription badge
+const renderSubscriptionBadge = (userData: any) => {
+  if (!userData?.premium) return null;
+
+  const subscriptionType = userData?.subscriptionType as keyof typeof SUBSCRIPTION_BADGES | undefined;
+  const config = subscriptionType
+    ? SUBSCRIPTION_BADGES[subscriptionType]
+    : SUBSCRIPTION_BADGES.MONTHLY;
+
+  const Icon = config.icon;
+  const BadgeIcon = config.badgeIcon;
+
+  return (
+    <Badge
+      className={`
+        ${config.bgColor} 
+        ${config.color} 
+        ${config.borderColor}
+        border-2 
+        font-bold 
+        px-3 py-1.5
+        flex items-center gap-2
+        shadow-sm
+        rounded-full
+      `}
+    >
+      <div className="relative">
+        <Icon className={`h-4 w-4 ${config.iconColor}`} />
+        <BadgeIcon className="absolute -top-1 -right-1 h-3 w-3 text-white fill-current" />
+      </div>
+      <span className="text-sm">{config.verifiedLabel}</span>
+    </Badge>
+  );
 };
 
-const slideIn = {
-  initial: { x: -20, opacity: 0 },
-  animate: { x: 0, opacity: 1 },
-  exit: { x: 20, opacity: 0 }
-};
+// Helper function to render premium stats indicator
+const renderPremiumStats = (userData: any) => {
+  if (!userData?.premium) return null;
 
+  const subscriptionType = userData?.subscriptionType as keyof typeof SUBSCRIPTION_BADGES | undefined;
+  const config = subscriptionType
+    ? SUBSCRIPTION_BADGES[subscriptionType]
+    : SUBSCRIPTION_BADGES.MONTHLY;
+
+  return (
+    <div className={`p-4 rounded-xl bg-linear-to-br ${config.linear} text-white shadow-lg`}>
+      <div className="flex items-center gap-2 mb-2">
+        <Crown className="h-4 w-4" />
+        <span className="text-sm font-bold">Premium Benefits</span>
+      </div>
+      <ul className="text-xs space-y-1">
+        {subscriptionType === 'EXPLORER' && (
+          <>
+            <li className="flex items-center gap-1">
+              <CheckCircle className="h-3 w-3" />
+              <span>Verified Explorer Badge</span>
+            </li>
+            <li className="flex items-center gap-1">
+              <CheckCircle className="h-3 w-3" />
+              <span>Priority in Search Results</span>
+            </li>
+          </>
+        )}
+        {subscriptionType === 'MONTHLY' && (
+          <>
+            <li className="flex items-center gap-1">
+              <CheckCircle className="h-3 w-3" />
+              <span>Verified Adventurer Badge</span>
+            </li>
+            <li className="flex items-center gap-1">
+              <CheckCircle className="h-3 w-3" />
+              <span>Unlimited Connection Requests</span>
+            </li>
+            <li className="flex items-center gap-1">
+              <CheckCircle className="h-3 w-3" />
+              <span>Priority Support</span>
+            </li>
+          </>
+        )}
+        {subscriptionType === 'YEARLY' && (
+          <>
+            <li className="flex items-center gap-1">
+              <CheckCircle className="h-3 w-3" />
+              <span>Verified Globetrotter Badge</span>
+            </li>
+            <li className="flex items-center gap-1">
+              <CheckCircle className="h-3 w-3" />
+              <span>Exclusive Badge & Features</span>
+            </li>
+            <li className="flex items-center gap-1">
+              <CheckCircle className="h-3 w-3" />
+              <span>24/7 Premium Support</span>
+            </li>
+            <li className="flex items-center gap-1">
+              <CheckCircle className="h-3 w-3" />
+              <span>Partner Discounts</span>
+            </li>
+          </>
+        )}
+      </ul>
+    </div>
+  );
+};
 
 export default function UserProfilePage() {
   const { data: session, status } = useSession();
@@ -153,7 +279,6 @@ export default function UserProfilePage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [deletingConnectionId, setDeletingConnectionId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("trips");
-
 
   // Fetch Profile Data
   const fetchProfile = async () => {
@@ -237,7 +362,6 @@ export default function UserProfilePage() {
       setError("Please log in to view your profile");
     }
   }, [session, status]);
-
 
   const handleRespondToRequest = async (connectionId: string, status: 'ACCEPTED' | 'REJECTED') => {
     try {
@@ -366,32 +490,85 @@ export default function UserProfilePage() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="relative overflow-hidden rounded-3xl bg-linear-to-br from-white via-blue-50/50 to-indigo-100/30 p-8 mb-8 shadow-2xl border border-white/50 backdrop-blur-sm"
+          className={`
+            relative overflow-hidden rounded-3xl p-8 mb-8 shadow-2xl border border-white/50 backdrop-blur-sm
+            ${profile.premium
+              ? profile.subscriptionType === 'EXPLORER'
+                ? 'bg-linear-to-br from-blue-50/80 via-white/50 to-indigo-100/30'
+                : profile.subscriptionType === 'MONTHLY'
+                  ? 'bg-linear-to-br from-purple-50/80 via-white/50 to-violet-100/30'
+                  : 'bg-linear-to-br from-orange-50/80 via-white/50 to-amber-100/30'
+              : 'bg-linear-to-br from-white via-blue-50/50 to-indigo-100/30'
+            }
+          `}
         >
           {/* Animated background pattern */}
           <div className="absolute inset-0 bg-linear-to-br from-blue-400/5 via-transparent to-purple-400/5" />
-          <div className="absolute top-0 right-0 w-96 h-96 bg-linear-to-bl from-blue-300/10 to-purple-300/10 rounded-full -translate-y-48 translate-x-48" />
+          {profile.premium && profile.subscriptionType && (
+            <div className={`absolute top-0 right-0 w-96 h-96 bg-linear-to-bl ${profile.subscriptionType === 'EXPLORER' ? 'from-blue-300/20 to-cyan-300/20' :
+                profile.subscriptionType === 'MONTHLY' ? 'from-purple-300/20 to-violet-300/20' :
+                  'from-orange-300/20 to-amber-300/20'
+              } rounded-full -translate-y-48 translate-x-48`} />
+          )}
           <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-linear-to-tr from-amber-300/10 to-pink-300/10 rounded-full" />
 
           <div className="relative flex flex-col lg:flex-row items-start lg:items-center gap-8">
-            {/* Avatar with floating animation */}
+            {/* Avatar with premium border */}
             <motion.div
               initial={{ scale: 0, rotate: -180 }}
               animate={{ scale: 1, rotate: 0 }}
               transition={{ type: "spring", stiffness: 100, delay: 0.2 }}
               className="relative group"
             >
-              <div className="relative w-44 h-44 rounded-full border-4 border-white/80 shadow-2xl overflow-hidden">
-                <Image
-                  src={profile.profileImage || "/placeholder-user.png"}
-                  alt={profile.name}
-                  fill
-                  className="object-cover"
-                  sizes="176px"
-                  priority
-                />
+              <div className={`
+                relative w-44 h-44 rounded-full border-4 border-white/80 shadow-2xl overflow-hidden shrink-0
+                ${profile.premium ? `
+                  ${profile.subscriptionType === 'EXPLORER' ? 'ring-4 ring-blue-300 shadow-blue-200' : ''}
+                  ${profile.subscriptionType === 'MONTHLY' ? 'ring-4 ring-purple-300 shadow-purple-200' : ''}
+                  ${profile.subscriptionType === 'YEARLY' ? 'ring-4 ring-orange-300 shadow-orange-200' : ''}
+                ` : ''}
+              `}>
+                {session?.user?.image ? (
+                  // Use session image directly
+                  <Image
+                    src={session.user.image}
+                    alt={profile.name}
+                    fill
+                    sizes="176px"
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer" // Important for Google images
+                  />
+                ) : (
+                  // Use Next.js Image for fallback
+                  <Image
+                    src={getImageSrc(profile.profileImage || "/placeholder-user.png")}
+                    alt={profile.name}
+                    fill
+                    className="object-cover"
+                    sizes="176px"
+                    priority
+                  />
+                )}
                 <div className="absolute inset-0 bg-linear-to-t from-black/30 via-transparent to-transparent" />
               </div>
+
+              {/* Premium verification badge on avatar */}
+              {profile.premium && profile.subscriptionType && (
+                <div className={`
+                  absolute -bottom-2 -right-2 
+                  h-10 w-10 rounded-full 
+                  flex items-center justify-center
+                  border-4 border-white
+                  shadow-lg
+                  ${profile.subscriptionType === 'EXPLORER' ? 'bg-linear-to-r from-blue-500 to-cyan-500' : ''}
+                  ${profile.subscriptionType === 'MONTHLY' ? 'bg-linear-to-r from-purple-500 to-violet-500' : ''}
+                  ${profile.subscriptionType === 'YEARLY' ? 'bg-linear-to-r from-orange-500 to-amber-500' : ''}
+                `}>
+                  {profile.subscriptionType === 'EXPLORER' && <ShieldCheck className="h-5 w-5 text-white" />}
+                  {profile.subscriptionType === 'MONTHLY' && <BadgeCheck className="h-5 w-5 text-white" />}
+                  {profile.subscriptionType === 'YEARLY' && <Award className="h-5 w-5 text-white" />}
+                </div>
+              )}
 
               {/* Online status with pulse animation */}
               <motion.div
@@ -419,16 +596,6 @@ export default function UserProfilePage() {
                 <Camera className="w-10 h-10 text-white" />
               </motion.button>
 
-              {/* Floating effect */}
-              <motion.div
-                animate={{ y: [0, -10, 0] }}
-                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute -top-2 -right-2"
-              >
-                <div className="p-2 bg-linear-to-r from-amber-400 to-orange-400 rounded-full shadow-lg">
-                  <Trophy className="w-5 h-5 text-white" />
-                </div>
-              </motion.div>
             </motion.div>
 
             {/* Profile Info */}
@@ -444,7 +611,10 @@ export default function UserProfilePage() {
                     {profile.name}
                   </h1>
 
-                  {/* Premium badge */}
+                  {/* Premium Subscription Verified Badge */}
+                  {renderSubscriptionBadge(profile)}
+
+                  {/* High Rating Badge */}
                   {profile.rating > 4.5 && (
                     <motion.div
                       initial={{ scale: 0 }}
@@ -498,6 +668,25 @@ export default function UserProfilePage() {
                       month: 'long'
                     })}
                   </span>
+
+                  {/* Premium subscription details */}
+                  {profile.premium && profile.subscriptionType && (
+                    <span className={`
+                      flex items-center gap-2 px-3 py-1.5 rounded-full shadow-sm
+                      ${profile.subscriptionType === 'EXPLORER' ? 'bg-blue-50 text-blue-700 border border-blue-200' : ''}
+                      ${profile.subscriptionType === 'MONTHLY' ? 'bg-purple-50 text-purple-700 border border-purple-200' : ''}
+                      ${profile.subscriptionType === 'YEARLY' ? 'bg-orange-50 text-orange-700 border border-orange-200' : ''}
+                    `}>
+                      {profile.subscriptionType === 'EXPLORER' && <Zap className="h-3 w-3" />}
+                      {profile.subscriptionType === 'MONTHLY' && <Crown className="h-3 w-3" />}
+                      {profile.subscriptionType === 'YEARLY' && <Gem className="h-3 w-3" />}
+                      <span className="font-medium text-sm">
+                        {profile.subscriptionType === 'EXPLORER' && 'Explorer Plan'}
+                        {profile.subscriptionType === 'MONTHLY' && 'Adventurer Plan'}
+                        {profile.subscriptionType === 'YEARLY' && 'Globetrotter Plan'}
+                      </span>
+                    </span>
+                  )}
                 </motion.div>
 
                 <motion.p variants={fadeInUp} className="text-gray-700 text-lg leading-relaxed max-w-3xl bg-white/30 backdrop-blur-sm p-4 rounded-2xl">
@@ -509,19 +698,35 @@ export default function UserProfilePage() {
                   <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                     <Button
                       onClick={() => setIsEditOpen(true)}
-                      className="bg-linear-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-300 group"
+                      className={`
+                        shadow-lg hover:shadow-xl transition-all duration-300 group
+                        ${profile.premium
+                          ? profile.subscriptionType === 'EXPLORER'
+                            ? 'bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700'
+                            : profile.subscriptionType === 'MONTHLY'
+                              ? 'bg-linear-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700'
+                              : 'bg-linear-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700'
+                          : 'bg-linear-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700'
+                        }
+                      `}
                     >
                       <Edit3 className="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform" />
                       Edit Profile
                     </Button>
                   </motion.div>
 
-                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                    <Button variant="outline" className="border-gray-300 bg-white/50 backdrop-blur-sm hover:bg-white">
-                      <Settings className="w-4 h-4 mr-2" />
-                      Settings
-                    </Button>
-                  </motion.div>
+
+                  {/* Premium upgrade button if not premium */}
+                  {!profile.premium && (
+                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                      <Link href="/pricing">
+                        <Button className="bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600">
+                          <Crown className="w-4 h-4 mr-2" />
+                          Go Premium
+                        </Button>
+                      </Link>
+                    </motion.div>
+                  )}
                 </motion.div>
               </motion.div>
             </div>
@@ -542,6 +747,8 @@ export default function UserProfilePage() {
             subtext={`${upcomingTrips.length} upcoming, ${pastTrips.length} past`}
             color="blue"
             index={0}
+            premium={profile.premium}
+            subscriptionType={profile.subscriptionType}
           />
 
           <StatCard
@@ -551,6 +758,8 @@ export default function UserProfilePage() {
             subtext="Visited"
             color="emerald"
             index={1}
+            premium={profile.premium}
+            subscriptionType={profile.subscriptionType}
           />
 
           <StatCard
@@ -560,6 +769,8 @@ export default function UserProfilePage() {
             subtext={`${safeReviews.length} reviews`}
             color="amber"
             index={2}
+            premium={profile.premium}
+            subscriptionType={profile.subscriptionType}
           />
 
           <StatCard
@@ -569,6 +780,8 @@ export default function UserProfilePage() {
             subtext="Global rank"
             color="purple"
             index={3}
+            premium={profile.premium}
+            subscriptionType={profile.subscriptionType}
           />
 
           <StatCard
@@ -578,8 +791,149 @@ export default function UserProfilePage() {
             subtext={`${incomingRequests.length} pending`}
             color="indigo"
             index={4}
+            premium={profile.premium}
+            subscriptionType={profile.subscriptionType}
           />
         </motion.div>
+
+        {/* Premium Stats Card */}
+        {profile.premium && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="mb-8"
+          >
+            <Card className={`
+              border-2 shadow-xl overflow-hidden
+              ${profile.subscriptionType === 'EXPLORER' ? 'border-blue-200 bg-linear-to-br from-blue-50/50 to-white' : ''}
+              ${profile.subscriptionType === 'MONTHLY' ? 'border-purple-200 bg-linear-to-br from-purple-50/50 to-white' : ''}
+              ${profile.subscriptionType === 'YEARLY' ? 'border-orange-200 bg-linear-to-br from-orange-50/50 to-white' : ''}
+            `}>
+              {/* Premium header linear */}
+              {profile.premium && (
+                <div className={`h-2 w-full bg-linear-to-r ${profile.subscriptionType === 'EXPLORER' ? 'from-blue-400 to-blue-500' :
+                    profile.subscriptionType === 'MONTHLY' ? 'from-purple-500 to-purple-600' :
+                      'from-orange-500 to-amber-600'
+                  }`} />
+              )}
+              <CardContent className="pt-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  {/* Left side: Premium benefits */}
+                  <div className="lg:col-span-2">
+                    <h3 className="text-2xl font-bold text-stone-800 mb-4 flex items-center gap-2">
+                      <Crown className="h-6 w-6" />
+                      Premium Member Benefits
+                    </h3>
+                    {renderPremiumStats(profile)}
+
+                    {/* Additional premium features */}
+                    <div className="mt-6 grid grid-cols-2 gap-4">
+                      <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-stone-200">
+                        <SparklesIcon className={`
+                          h-5 w-5
+                          ${profile.subscriptionType === 'EXPLORER' ? 'text-blue-500' :
+                            profile.subscriptionType === 'MONTHLY' ? 'text-purple-500' :
+                              'text-orange-500'
+                          }
+                        `} />
+                        <div>
+                          <p className="font-medium text-sm">Premium Badge</p>
+                          <p className="text-xs text-stone-500">Visible on profile</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-stone-200">
+                        <ShieldCheck className={`
+                          h-5 w-5
+                          ${profile.subscriptionType === 'EXPLORER' ? 'text-blue-500' :
+                            profile.subscriptionType === 'MONTHLY' ? 'text-purple-500' :
+                              'text-orange-500'
+                          }
+                        `} />
+                        <div>
+                          <p className="font-medium text-sm">Verified Status</p>
+                          <p className="text-xs text-stone-500">Increased trust</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-stone-200">
+                        <Zap className={`
+                          h-5 w-5
+                          ${profile.subscriptionType === 'EXPLORER' ? 'text-blue-500' :
+                            profile.subscriptionType === 'MONTHLY' ? 'text-purple-500' :
+                              'text-orange-500'
+                          }
+                        `} />
+                        <div>
+                          <p className="font-medium text-sm">Priority Access</p>
+                          <p className="text-xs text-stone-500">Faster connections</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-stone-200">
+                        <Gem className={`
+                          h-5 w-5
+                          ${profile.subscriptionType === 'EXPLORER' ? 'text-blue-500' :
+                            profile.subscriptionType === 'MONTHLY' ? 'text-purple-500' :
+                              'text-orange-500'
+                          }
+                        `} />
+                        <div>
+                          <p className="font-medium text-sm">Exclusive Features</p>
+                          <p className="text-xs text-stone-500">Advanced tools</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right side: Subscription info */}
+                  <div className="space-y-6">
+                    <div className={`p-6 rounded-xl text-white shadow-lg ${profile.subscriptionType === 'EXPLORER' ? 'bg-linear-to-br from-blue-500 to-cyan-500' :
+                        profile.subscriptionType === 'MONTHLY' ? 'bg-linear-to-br from-purple-500 to-violet-500' :
+                          'bg-linear-to-br from-orange-500 to-amber-500'
+                      }`}>
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-xl font-bold">Current Plan</h4>
+                        {profile.subscriptionType === 'EXPLORER' && <Zap className="h-6 w-6" />}
+                        {profile.subscriptionType === 'MONTHLY' && <Crown className="h-6 w-6" />}
+                        {profile.subscriptionType === 'YEARLY' && <Gem className="h-6 w-6" />}
+                      </div>
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-3xl font-bold">
+                            {profile.subscriptionType === 'EXPLORER' && 'Explorer'}
+                            {profile.subscriptionType === 'MONTHLY' && 'Adventurer'}
+                            {profile.subscriptionType === 'YEARLY' && 'Globetrotter'}
+                          </p>
+                          <p className="text-sm opacity-90">Premium Plan</p>
+                        </div>
+                        {profile.subscriptionExpiresAt && (
+                          <div className="pt-4 border-t border-white/30">
+                            <p className="text-sm">Renews on</p>
+                            <p className="font-semibold">
+                              {new Date(profile.subscriptionExpiresAt).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                              })}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="text-center">
+                      <Link href="/pricing">
+                        <Button variant="outline" className="w-full">
+                          <Settings className="h-4 w-4 mr-2" />
+                          Manage Subscription
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="trips" value={activeTab} onValueChange={setActiveTab} className="space-y-8">
@@ -604,10 +958,35 @@ export default function UserProfilePage() {
                 >
                   <TabsTrigger
                     value={tab.value}
-                    className="flex-1 py-3 rounded-xl data-[state=active]:bg-linear-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
+                    className={`
+                      flex-1 py-3 rounded-xl data-[state=active]:border-b-2 data-[state=active]:shadow-lg transition-all duration-300
+                      ${profile.premium
+                        ? profile.subscriptionType === 'EXPLORER'
+                          ? 'data-[state=active]:bg-linear-to-r data-[state=active]:from-blue-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white'
+                          : profile.subscriptionType === 'MONTHLY'
+                            ? 'data-[state=active]:bg-linear-to-r data-[state=active]:from-purple-500 data-[state=active]:to-violet-500 data-[state=active]:text-white'
+                            : 'data-[state=active]:bg-linear-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white'
+                        : 'data-[state=active]:bg-linear-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white'
+                      }
+                    `}
                   >
                     <span className="mr-2">{tab.icon}</span>
                     {tab.label}
+                    {/* Premium indicator on tabs */}
+                    {profile.premium && (
+                      <span className={`
+                        ml-2 text-xs px-1.5 py-0.5 rounded
+                        ${profile.subscriptionType === 'EXPLORER' ? 'bg-blue-100 text-blue-700' : ''}
+                        ${profile.subscriptionType === 'MONTHLY' ? 'bg-purple-100 text-purple-700' : ''}
+                        ${profile.subscriptionType === 'YEARLY' ? 'bg-orange-100 text-orange-700' : ''}
+                      `}>
+                        {tab.value === "trips" && safePlans.length}
+                        {tab.value === "connections" && connections.length}
+                        {tab.value === "reviews" && safeReviews.length}
+                        {tab.value === "interests" && safeInterests.length}
+                        {tab.value === "countries" && safeCountries.length}
+                      </span>
+                    )}
                   </TabsTrigger>
                 </motion.div>
               ))}
@@ -648,6 +1027,19 @@ export default function UserProfilePage() {
                         Past: {pastTrips.length}
                       </Badge>
                     </motion.div>
+                    {profile.premium && (
+                      <motion.div whileHover={{ scale: 1.05 }}>
+                        <Badge className={`
+                          gap-2 shadow-sm
+                          ${profile.subscriptionType === 'EXPLORER' ? 'bg-linear-to-r from-blue-500 to-cyan-500 text-white' : ''}
+                          ${profile.subscriptionType === 'MONTHLY' ? 'bg-linear-to-r from-purple-500 to-violet-500 text-white' : ''}
+                          ${profile.subscriptionType === 'YEARLY' ? 'bg-linear-to-r from-orange-500 to-amber-500 text-white' : ''}
+                        `}>
+                          <Crown className="w-3 h-3" />
+                          Premium
+                        </Badge>
+                      </motion.div>
+                    )}
                   </div>
                 </motion.div>
 
@@ -662,10 +1054,22 @@ export default function UserProfilePage() {
                       description="Start your adventure by creating your first travel plan!"
                       action={
                         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                          <Button className="mt-6 bg-linear-to-r from-blue-600 to-indigo-600 shadow-lg">
-                            <MapPin className="w-4 h-4 mr-2" />
-                            Create First Trip
-                          </Button>
+                          <Link href={"/my-travel-plans"}>
+                            <Button className={`
+                              mt-6 shadow-lg
+                              ${profile.premium
+                                ? profile.subscriptionType === 'EXPLORER'
+                                  ? 'bg-linear-to-r from-blue-600 to-cyan-600'
+                                  : profile.subscriptionType === 'MONTHLY'
+                                    ? 'bg-linear-to-r from-purple-600 to-violet-600'
+                                    : 'bg-linear-to-r from-orange-600 to-amber-600'
+                                : 'bg-linear-to-r from-blue-600 to-indigo-600'
+                              }
+                            `}>
+                              <MapPin className="w-4 h-4 mr-2" />
+                              Create First Trip
+                            </Button>
+                          </Link>
                         </motion.div>
                       }
                     />
@@ -679,10 +1083,30 @@ export default function UserProfilePage() {
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.2 }}
                       >
-                        <Card className="border-white/20 bg-linear-to-br from-blue-50/50 to-indigo-50/30 backdrop-blur-sm shadow-xl h-full">
+                        <Card className={`
+                          border-white/20 backdrop-blur-sm shadow-xl h-full
+                          ${profile.premium
+                            ? profile.subscriptionType === 'EXPLORER'
+                              ? 'bg-linear-to-br from-blue-50/50 to-indigo-50/30 border-blue-200'
+                              : profile.subscriptionType === 'MONTHLY'
+                                ? 'bg-linear-to-br from-purple-50/50 to-violet-50/30 border-purple-200'
+                                : 'bg-linear-to-br from-orange-50/50 to-amber-50/30 border-orange-200'
+                            : 'bg-linear-to-br from-blue-50/50 to-indigo-50/30'
+                          }
+                        `}>
                           <CardHeader className="pb-3">
                             <CardTitle className="flex items-center gap-3">
-                              <div className="p-2 bg-linear-to-r from-blue-400 to-indigo-400 rounded-xl shadow-lg">
+                              <div className={`
+                                p-2 rounded-xl shadow-lg
+                                ${profile.premium
+                                  ? profile.subscriptionType === 'EXPLORER'
+                                    ? 'bg-linear-to-r from-blue-400 to-cyan-400'
+                                    : profile.subscriptionType === 'MONTHLY'
+                                      ? 'bg-linear-to-r from-purple-400 to-violet-400'
+                                      : 'bg-linear-to-r from-orange-400 to-amber-400'
+                                  : 'bg-linear-to-r from-blue-400 to-indigo-400'
+                                }
+                              `}>
                                 <Clock className="w-5 h-5 text-white" />
                               </div>
                               <div>
@@ -704,7 +1128,7 @@ export default function UserProfilePage() {
                                     exit={{ opacity: 0, x: 20 }}
                                     transition={{ delay: index * 0.1 }}
                                   >
-                                    <TripCard key={plan.id} plan={plan} type="upcoming" />
+                                    <TripCard key={plan.id} plan={plan} type="upcoming" user={profile} />
                                   </motion.div>
                                 ))}
                               </AnimatePresence>
@@ -757,7 +1181,7 @@ export default function UserProfilePage() {
                                     exit={{ opacity: 0, x: 20 }}
                                     transition={{ delay: index * 0.1 }}
                                   >
-                                    <TripCard key={plan.id} plan={plan} type="past" />
+                                    <TripCard key={plan.id} plan={plan} type="past" user={profile} />
                                   </motion.div>
                                 ))}
                               </AnimatePresence>
@@ -767,9 +1191,11 @@ export default function UserProfilePage() {
                                   animate={{ opacity: 1 }}
                                   transition={{ delay: 0.4 }}
                                 >
-                                  <Button variant="ghost" className="w-full mt-4">
-                                    View All {pastTrips.length} Trips
-                                  </Button>
+                                  <Link href="/dashboard/my-travel-plans">
+                                    <Button variant="ghost" className="w-full mt-4">
+                                      View All {pastTrips.length} Trips
+                                    </Button>
+                                  </Link>
                                 </motion.div>
                               )}
                             </div>
@@ -807,6 +1233,19 @@ export default function UserProfilePage() {
                         Pending: {incomingRequests.length}
                       </Badge>
                     </motion.div>
+                    {profile.premium && (
+                      <motion.div whileHover={{ scale: 1.05 }}>
+                        <Badge className={`
+                          gap-2 shadow-sm
+                          ${profile.subscriptionType === 'EXPLORER' ? 'bg-linear-to-r from-blue-500 to-cyan-500 text-white' : ''}
+                          ${profile.subscriptionType === 'MONTHLY' ? 'bg-linear-to-r from-purple-500 to-violet-500 text-white' : ''}
+                          ${profile.subscriptionType === 'YEARLY' ? 'bg-linear-to-r from-orange-500 to-amber-500 text-white' : ''}
+                        `}>
+                          <Crown className="w-3 h-3" />
+                          Premium
+                        </Badge>
+                      </motion.div>
+                    )}
                   </div>
                 </motion.div>
 
@@ -867,10 +1306,22 @@ export default function UserProfilePage() {
                       description="Start connecting with other travelers to build your travel network!"
                       action={
                         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                          <Button className="mt-6 bg-linear-to-r from-blue-600 to-indigo-600 shadow-lg">
-                            <UserPlus className="w-4 h-4 mr-2" />
-                            Find Travelers
-                          </Button>
+                          <Link href={"/explore-travelers"}>
+                            <Button className={`
+                              mt-6 shadow-lg
+                              ${profile.premium
+                                ? profile.subscriptionType === 'EXPLORER'
+                                  ? 'bg-linear-to-r from-blue-600 to-cyan-600'
+                                  : profile.subscriptionType === 'MONTHLY'
+                                    ? 'bg-linear-to-r from-purple-600 to-violet-600'
+                                    : 'bg-linear-to-r from-orange-600 to-amber-600'
+                                : 'bg-linear-to-r from-blue-600 to-indigo-600'
+                              }
+                            `}>
+                              <UserPlus className="w-4 h-4 mr-2" />
+                              Find Travelers
+                            </Button>
+                          </Link>
                         </motion.div>
                       }
                     />
@@ -967,7 +1418,7 @@ export default function UserProfilePage() {
                           transition={{ delay: index * 0.1 }}
                           whileHover={{ y: -5 }}
                         >
-                          <ReviewCard key={review.id} review={review} />
+                          <ReviewCard key={review.id} review={review} user={profile} />
                         </motion.div>
                       ))}
                     </AnimatePresence>
@@ -989,7 +1440,17 @@ export default function UserProfilePage() {
                     <p className="text-gray-600">What kind of traveler are you?</p>
                   </div>
                   <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                    <Button onClick={() => setIsEditOpen(true)} className="bg-linear-to-r from-blue-600 to-indigo-600">
+                    <Button onClick={() => setIsEditOpen(true)} className={`
+                      shadow-lg
+                      ${profile.premium
+                        ? profile.subscriptionType === 'EXPLORER'
+                          ? 'bg-linear-to-r from-blue-600 to-cyan-600'
+                          : profile.subscriptionType === 'MONTHLY'
+                            ? 'bg-linear-to-r from-purple-600 to-violet-600'
+                            : 'bg-linear-to-r from-orange-600 to-amber-600'
+                        : 'bg-linear-to-r from-blue-600 to-indigo-600'
+                      }
+                    `}>
                       <Edit3 className="w-4 h-4 mr-2" />
                       Edit Interests
                     </Button>
@@ -1007,7 +1468,17 @@ export default function UserProfilePage() {
                       description="Let others know what kind of travel experiences you enjoy!"
                       action={
                         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                          <Button onClick={() => setIsEditOpen(true)} className="mt-6">
+                          <Button onClick={() => setIsEditOpen(true)} className={`
+                            mt-6
+                            ${profile.premium
+                              ? profile.subscriptionType === 'EXPLORER'
+                                ? 'bg-linear-to-r from-blue-600 to-cyan-600'
+                                : profile.subscriptionType === 'MONTHLY'
+                                  ? 'bg-linear-to-r from-purple-600 to-violet-600'
+                                  : 'bg-linear-to-r from-orange-600 to-amber-600'
+                              : 'bg-linear-to-r from-blue-600 to-indigo-600'
+                            }
+                          `}>
                             <Edit3 className="w-4 h-4 mr-2" />
                             Add Interests
                           </Button>
@@ -1021,7 +1492,17 @@ export default function UserProfilePage() {
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.2 }}
                   >
-                    <Card className="border-white/20 bg-linear-to-br from-white/50 to-pink-50/30 backdrop-blur-sm shadow-xl">
+                    <Card className={`
+                      border-white/20 backdrop-blur-sm shadow-xl
+                      ${profile.premium
+                        ? profile.subscriptionType === 'EXPLORER'
+                          ? 'bg-linear-to-br from-blue-50/50 to-white/30 border-blue-200'
+                          : profile.subscriptionType === 'MONTHLY'
+                            ? 'bg-linear-to-br from-purple-50/50 to-white/30 border-purple-200'
+                            : 'bg-linear-to-br from-orange-50/50 to-white/30 border-orange-200'
+                        : 'bg-linear-to-br from-white/50 to-pink-50/30'
+                      }
+                    `}>
                       <CardContent className="p-8">
                         <div className="flex flex-wrap gap-4 justify-center">
                           <AnimatePresence>
@@ -1036,7 +1517,17 @@ export default function UserProfilePage() {
                               >
                                 <Badge
                                   variant="secondary"
-                                  className="px-6 py-3 text-base bg-linear-to-r from-pink-100 via-rose-100 to-red-100 text-pink-700 border-pink-200 hover:from-pink-200 hover:via-rose-200 hover:to-red-200 shadow-lg"
+                                  className={`
+                                    px-6 py-3 text-base shadow-lg
+                                    ${profile.premium
+                                      ? profile.subscriptionType === 'EXPLORER'
+                                        ? 'bg-linear-to-r from-blue-100 via-cyan-100 to-blue-100 text-blue-700 border-blue-200'
+                                        : profile.subscriptionType === 'MONTHLY'
+                                          ? 'bg-linear-to-r from-purple-100 via-violet-100 to-purple-100 text-purple-700 border-purple-200'
+                                          : 'bg-linear-to-r from-orange-100 via-amber-100 to-orange-100 text-orange-700 border-orange-200'
+                                      : 'bg-linear-to-r from-pink-100 via-rose-100 to-red-100 text-pink-700 border-pink-200'
+                                    }
+                                  `}
                                 >
                                   <Heart className="w-4 h-4 mr-2" />
                                   {interest}
@@ -1055,9 +1546,29 @@ export default function UserProfilePage() {
                       transition={{ delay: 0.4 }}
                       className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8"
                     >
-                      <Card className="border-white/20 bg-linear-to-br from-blue-50/50 to-indigo-50/30 backdrop-blur-sm">
+                      <Card className={`
+                        border-white/20 backdrop-blur-sm
+                        ${profile.premium
+                          ? profile.subscriptionType === 'EXPLORER'
+                            ? 'bg-linear-to-br from-blue-50/50 to-indigo-50/30 border-blue-200'
+                            : profile.subscriptionType === 'MONTHLY'
+                              ? 'bg-linear-to-br from-purple-50/50 to-violet-50/30 border-purple-200'
+                              : 'bg-linear-to-br from-orange-50/50 to-amber-50/30 border-orange-200'
+                          : 'border-white/20 bg-linear-to-br from-blue-50/50 to-indigo-50/30'
+                        }
+                      `}>
                         <CardContent className="p-6 text-center">
-                          <div className="text-3xl font-bold text-blue-600">{safeInterests.length}</div>
+                          <div className={`
+                            text-3xl font-bold
+                            ${profile.premium
+                              ? profile.subscriptionType === 'EXPLORER' ? 'text-blue-600' :
+                                profile.subscriptionType === 'MONTHLY' ? 'text-purple-600' :
+                                  'text-orange-600'
+                              : 'text-blue-600'
+                            }
+                          `}>
+                            {safeInterests.length}
+                          </div>
                           <div className="text-sm text-gray-600">Total Interests</div>
                         </CardContent>
                       </Card>
@@ -1096,7 +1607,17 @@ export default function UserProfilePage() {
                     <p className="text-gray-600">Your global footprint</p>
                   </div>
                   <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                    <Button onClick={() => setIsEditOpen(true)} className="bg-linear-to-r from-emerald-600 to-teal-600">
+                    <Button onClick={() => setIsEditOpen(true)} className={`
+                      shadow-lg
+                      ${profile.premium
+                        ? profile.subscriptionType === 'EXPLORER'
+                          ? 'bg-linear-to-r from-blue-600 to-cyan-600'
+                          : profile.subscriptionType === 'MONTHLY'
+                            ? 'bg-linear-to-r from-purple-600 to-violet-600'
+                            : 'bg-linear-to-r from-orange-600 to-amber-600'
+                        : 'bg-linear-to-r from-emerald-600 to-teal-600'
+                      }
+                    `}>
                       <Flag className="w-4 h-4 mr-2" />
                       Add Countries
                     </Button>
@@ -1114,7 +1635,17 @@ export default function UserProfilePage() {
                       description="Start your travel journey and add the countries you've visited!"
                       action={
                         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                          <Button onClick={() => setIsEditOpen(true)} className="mt-6">
+                          <Button onClick={() => setIsEditOpen(true)} className={`
+                            mt-6
+                            ${profile.premium
+                              ? profile.subscriptionType === 'EXPLORER'
+                                ? 'bg-linear-to-r from-blue-600 to-cyan-600'
+                                : profile.subscriptionType === 'MONTHLY'
+                                  ? 'bg-linear-to-r from-purple-600 to-violet-600'
+                                  : 'bg-linear-to-r from-orange-600 to-amber-600'
+                              : 'bg-linear-to-r from-blue-600 to-indigo-600'
+                            }
+                          `}>
                             <MapPin className="w-4 h-4 mr-2" />
                             Add Countries
                           </Button>
@@ -1130,7 +1661,17 @@ export default function UserProfilePage() {
                     className="space-y-8"
                   >
                     {/* Country Grid */}
-                    <Card className="border-white/20 bg-linear-to-br from-white/50 to-emerald-50/30 backdrop-blur-sm shadow-xl">
+                    <Card className={`
+                      border-white/20 backdrop-blur-sm shadow-xl
+                      ${profile.premium
+                        ? profile.subscriptionType === 'EXPLORER'
+                          ? 'bg-linear-to-br from-blue-50/50 to-white/30 border-blue-200'
+                          : profile.subscriptionType === 'MONTHLY'
+                            ? 'bg-linear-to-br from-purple-50/50 to-white/30 border-purple-200'
+                            : 'bg-linear-to-br from-orange-50/50 to-white/30 border-orange-200'
+                        : 'bg-linear-to-br from-white/50 to-emerald-50/30'
+                      }
+                    `}>
                       <CardContent className="p-8">
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                           <AnimatePresence>
@@ -1145,9 +1686,27 @@ export default function UserProfilePage() {
                               >
                                 <Badge
                                   variant="outline"
-                                  className="w-full px-4 py-3 text-sm bg-white/80 backdrop-blur-sm border-emerald-200 hover:bg-emerald-50 shadow-sm"
+                                  className={`
+                                    w-full px-4 py-3 text-sm shadow-sm backdrop-blur-sm
+                                    ${profile.premium
+                                      ? profile.subscriptionType === 'EXPLORER'
+                                        ? 'bg-white/80 border-blue-200 hover:bg-blue-50 text-blue-700'
+                                        : profile.subscriptionType === 'MONTHLY'
+                                          ? 'bg-white/80 border-purple-200 hover:bg-purple-50 text-purple-700'
+                                          : 'bg-white/80 border-orange-200 hover:bg-orange-50 text-orange-700'
+                                      : 'bg-white/80 border-emerald-200 hover:bg-emerald-50'
+                                    }
+                                  `}
                                 >
-                                  <CheckCircle className="w-4 h-4 mr-2 text-emerald-500" />
+                                  <CheckCircle className={`
+                                    w-4 h-4 mr-2
+                                    ${profile.premium
+                                      ? profile.subscriptionType === 'EXPLORER' ? 'text-blue-500' :
+                                        profile.subscriptionType === 'MONTHLY' ? 'text-purple-500' :
+                                          'text-orange-500'
+                                      : 'text-emerald-500'
+                                    }
+                                  `} />
                                   {country}
                                 </Badge>
                               </motion.div>
@@ -1164,10 +1723,30 @@ export default function UserProfilePage() {
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.3 }}
                       >
-                        <Card className="border-white/20 bg-linear-to-br from-white/50 to-blue-50/30 backdrop-blur-sm shadow-xl h-full">
+                        <Card className={`
+                          border-white/20 backdrop-blur-sm shadow-xl h-full
+                          ${profile.premium
+                            ? profile.subscriptionType === 'EXPLORER'
+                              ? 'bg-linear-to-br from-blue-50/50 to-white/30 border-blue-200'
+                              : profile.subscriptionType === 'MONTHLY'
+                                ? 'bg-linear-to-br from-purple-50/50 to-white/30 border-purple-200'
+                                : 'bg-linear-to-br from-orange-50/50 to-white/30 border-orange-200'
+                            : 'bg-linear-to-br from-white/50 to-blue-50/30'
+                          }
+                        `}>
                           <CardHeader>
                             <CardTitle className="flex items-center gap-3">
-                              <div className="p-2 bg-linear-to-r from-blue-400 to-indigo-400 rounded-xl shadow-lg">
+                              <div className={`
+                                p-2 rounded-xl shadow-lg
+                                ${profile.premium
+                                  ? profile.subscriptionType === 'EXPLORER'
+                                    ? 'bg-linear-to-r from-blue-400 to-cyan-400'
+                                    : profile.subscriptionType === 'MONTHLY'
+                                      ? 'bg-linear-to-r from-purple-400 to-violet-400'
+                                      : 'bg-linear-to-r from-orange-400 to-amber-400'
+                                  : 'bg-linear-to-r from-blue-400 to-indigo-400'
+                                }
+                              `}>
                                 <Target className="w-5 h-5 text-white" />
                               </div>
                               <div>
@@ -1193,7 +1772,15 @@ export default function UserProfilePage() {
                                 initial={{ width: 0 }}
                                 animate={{ width: "100%" }}
                                 transition={{ delay: 0.5, duration: 1 }}
-                                className="h-1 bg-linear-to-r from-transparent via-blue-500 to-transparent opacity-50"
+                                className={`
+                                  h-1 bg-linear-to-r from-transparent to-transparent opacity-50
+                                  ${profile.premium
+                                    ? profile.subscriptionType === 'EXPLORER' ? 'via-blue-500' :
+                                      profile.subscriptionType === 'MONTHLY' ? 'via-purple-500' :
+                                        'via-orange-500'
+                                    : 'via-blue-500'
+                                  }
+                                `}
                               />
                             </div>
                           </CardContent>
@@ -1205,10 +1792,30 @@ export default function UserProfilePage() {
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.4 }}
                       >
-                        <Card className="border-white/20 bg-linear-to-br from-white/50 to-purple-50/30 backdrop-blur-sm shadow-xl h-full">
+                        <Card className={`
+                          border-white/20 backdrop-blur-sm shadow-xl h-full
+                          ${profile.premium
+                            ? profile.subscriptionType === 'EXPLORER'
+                              ? 'bg-linear-to-br from-blue-50/50 to-white/30 border-blue-200'
+                              : profile.subscriptionType === 'MONTHLY'
+                                ? 'bg-linear-to-br from-purple-50/50 to-white/30 border-purple-200'
+                                : 'bg-linear-to-br from-orange-50/50 to-white/30 border-orange-200'
+                            : 'bg-linear-to-br from-white/50 to-purple-50/30'
+                          }
+                        `}>
                           <CardHeader>
                             <CardTitle className="flex items-center gap-3">
-                              <div className="p-2 bg-linear-to-r from-purple-400 to-pink-400 rounded-xl shadow-lg">
+                              <div className={`
+                                p-2 rounded-xl shadow-lg
+                                ${profile.premium
+                                  ? profile.subscriptionType === 'EXPLORER'
+                                    ? 'bg-linear-to-r from-blue-400 to-cyan-400'
+                                    : profile.subscriptionType === 'MONTHLY'
+                                      ? 'bg-linear-to-r from-purple-400 to-violet-400'
+                                      : 'bg-linear-to-r from-orange-400 to-amber-400'
+                                  : 'bg-linear-to-r from-purple-400 to-pink-400'
+                                }
+                              `}>
                                 <Trophy className="w-5 h-5 text-white" />
                               </div>
                               <div>
@@ -1262,8 +1869,8 @@ function calculateTravelScore(countries: number, trips: number): number {
   return Math.min(100, Math.round(countries * 10 + trips * 5));
 }
 
-// TripCard Component
-function TripCard({ plan, type }: { plan: any; type: 'upcoming' | 'past' }) {
+// Updated TripCard Component with premium support
+function TripCard({ plan, type, user }: { plan: any; type: 'upcoming' | 'past'; user?: UserProfile }) {
   const isUpcoming = type === 'upcoming';
 
   return (
@@ -1271,13 +1878,26 @@ function TripCard({ plan, type }: { plan: any; type: 'upcoming' | 'past' }) {
       <div className="flex items-center gap-4 p-4 rounded-2xl border border-white/30 bg-white/60 backdrop-blur-sm hover:bg-white/80 transition-all duration-300 shadow-sm hover:shadow-md">
         <div className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0">
           <Image
-            src={plan.image || "/placeholder-travel.jpg"}
+            src={getImageSrc(plan.image)}
             alt={plan.destination}
             fill
             className="object-cover group-hover:scale-110 transition-transform duration-300"
             sizes="80px"
           />
           <div className="absolute inset-0 bg-linear-to-t from-black/30 to-transparent" />
+          {/* Premium badge on trip card */}
+          {user?.premium && (
+            <div className="absolute top-2 left-2">
+              <Badge className={`
+                text-xs border-0 shadow-sm
+                ${user.subscriptionType === 'EXPLORER' ? 'bg-linear-to-r from-blue-500 to-cyan-500 text-white' : ''}
+                ${user.subscriptionType === 'MONTHLY' ? 'bg-linear-to-r from-purple-500 to-violet-500 text-white' : ''}
+                ${user.subscriptionType === 'YEARLY' ? 'bg-linear-to-r from-orange-500 to-amber-500 text-white' : ''}
+              `}>
+                Premium
+              </Badge>
+            </div>
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between">
@@ -1290,7 +1910,13 @@ function TripCard({ plan, type }: { plan: any; type: 'upcoming' | 'past' }) {
             </div>
             <Badge variant={isUpcoming ? "default" : "outline"}
               className={isUpcoming
-                ? "bg-linear-to-r from-blue-500 to-indigo-500 text-white border-0"
+                ? user?.premium
+                  ? user.subscriptionType === 'EXPLORER'
+                    ? "bg-linear-to-r from-blue-500 to-cyan-500 text-white border-0"
+                    : user.subscriptionType === 'MONTHLY'
+                      ? "bg-linear-to-r from-purple-500 to-violet-500 text-white border-0"
+                      : "bg-linear-to-r from-orange-500 to-amber-500 text-white border-0"
+                  : "bg-linear-to-r from-blue-500 to-indigo-500 text-white border-0"
                 : "border-gray-300"
               }
             >
@@ -1315,16 +1941,41 @@ function TripCard({ plan, type }: { plan: any; type: 'upcoming' | 'past' }) {
   );
 }
 
-// ReviewCard Component
-function ReviewCard({ review }: { review: any }) {
+// Updated ReviewCard Component with premium support
+function ReviewCard({ review, user }: { review: any; user?: UserProfile }) {
   return (
     <motion.div whileHover={{ y: -5 }}>
-      <Card className="border-white/20 bg-linear-to-br from-white/50 to-amber-50/30 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
+      <Card className={`
+        border-white/20 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300
+        ${user?.premium
+          ? user.subscriptionType === 'EXPLORER'
+            ? 'bg-linear-to-br from-blue-50/50 to-white/30 border-blue-200'
+            : user.subscriptionType === 'MONTHLY'
+              ? 'bg-linear-to-br from-purple-50/50 to-white/30 border-purple-200'
+              : 'bg-linear-to-br from-orange-50/50 to-white/30 border-orange-200'
+          : 'bg-linear-to-br from-white/50 to-amber-50/30'
+        }
+      `}>
         <CardContent className="p-6">
           <div className="flex items-start gap-4">
-            <Avatar className="w-14 h-14 border-3 border-white/80 shadow-lg">
+            <Avatar className={`
+              w-14 h-14 border-3 border-white/80 shadow-lg
+              ${user?.premium ?
+                user.subscriptionType === 'EXPLORER' ? 'ring-2 ring-blue-300' :
+                  user.subscriptionType === 'MONTHLY' ? 'ring-2 ring-purple-300' :
+                    'ring-2 ring-orange-300'
+                : ''
+              }
+            `}>
               <AvatarImage src={review.reviewer?.profileImage} alt={review.reviewer?.name} />
-              <AvatarFallback className="bg-linear-to-br from-amber-100 to-orange-100">
+              <AvatarFallback className={`
+                ${user?.premium
+                  ? user.subscriptionType === 'EXPLORER' ? 'bg-linear-to-br from-blue-100 to-cyan-100 text-blue-700' :
+                    user.subscriptionType === 'MONTHLY' ? 'bg-linear-to-br from-purple-100 to-violet-100 text-purple-700' :
+                      'bg-linear-to-br from-orange-100 to-amber-100 text-orange-700'
+                  : 'bg-linear-to-br from-amber-100 to-orange-100'
+                }
+              `}>
                 {review.reviewer?.name?.charAt(0) || "T"}
               </AvatarFallback>
             </Avatar>
@@ -1353,6 +2004,19 @@ function ReviewCard({ review }: { review: any }) {
                   <span className="text-sm text-gray-500">
                     Trip to {review.trip.destination}
                   </span>
+                </div>
+              )}
+              {/* Premium badge on review */}
+              {user?.premium && (
+                <div className="mt-3">
+                  <Badge className={`
+                    text-xs
+                    ${user.subscriptionType === 'EXPLORER' ? 'bg-blue-100 text-blue-700 border border-blue-200' : ''}
+                    ${user.subscriptionType === 'MONTHLY' ? 'bg-purple-100 text-purple-700 border border-purple-200' : ''}
+                    ${user.subscriptionType === 'YEARLY' ? 'bg-orange-100 text-orange-700 border border-orange-200' : ''}
+                  `}>
+                    Premium Review
+                  </Badge>
                 </div>
               )}
             </div>
@@ -1452,13 +2116,11 @@ function ConnectionCard({
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex-1">
               <Link href={`/PublicVisitProfile/${otherUser?.id}`}>
                 <Button variant="outline" size="sm" className="cursor-pointer w-full border-gray-300 bg-white/50">
-
                   <UserRoundSearch className="w-4 h-4 mr-2" />
                   View Profile
                 </Button>
               </Link>
             </motion.div>
-
           </div>
         </CardContent>
       </Card>
@@ -1512,9 +2174,8 @@ function ConnectionRequestCard({ request, onRespond }: { request: any, onRespond
   );
 }
 
-// Enhanced StatCard component
-function StatCard({ icon, label, value, subtext, color = "blue", index }: any) {
-
+// Enhanced StatCard component with premium support
+function StatCard({ icon, label, value, subtext, color = "blue", index, premium, subscriptionType }: any) {
   const colorClasses = {
     blue: "from-blue-400 to-indigo-500",
     emerald: "from-emerald-400 to-teal-500",
@@ -1530,7 +2191,8 @@ function StatCard({ icon, label, value, subtext, color = "blue", index }: any) {
     purple: "from-purple-50/50 to-pink-50/30",
     indigo: "from-indigo-50/50 to-blue-50/30"
   };
-    const colorKey = color as keyof typeof colorClasses;
+
+  const colorKey = color as keyof typeof colorClasses;
   const bgKey = color as keyof typeof bgClasses;
 
   return (
@@ -1541,16 +2203,37 @@ function StatCard({ icon, label, value, subtext, color = "blue", index }: any) {
       whileHover={{ y: -5, transition: { duration: 0.2 } }}
     >
       <Card className={cn(
-        "border-white/20 bg-linear-to-br backdrop-blur-sm shadow-lg hover:shadow-2xl transition-all duration-300",
-        bgClasses[bgKey ]
+        "border-white/20 backdrop-blur-sm shadow-lg hover:shadow-2xl transition-all duration-300",
+        premium
+          ? subscriptionType === 'EXPLORER' && color === 'blue' ? 'border-blue-200 bg-linear-to-br from-blue-50/50 to-white/30' :
+            subscriptionType === 'MONTHLY' && color === 'purple' ? 'border-purple-200 bg-linear-to-br from-purple-50/50 to-white/30' :
+              subscriptionType === 'YEARLY' && color === 'amber' ? 'border-orange-200 bg-linear-to-br from-orange-50/50 to-white/30' :
+                bgClasses[bgKey]
+          : bgClasses[bgKey]
       )}>
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <motion.div
               whileHover={{ rotate: 15, scale: 1.1 }}
-              className={`p-3 rounded-2xl bg-linear-to-br ${colorClasses[colorKey]} bg-opacity-10 backdrop-blur-sm`}
+              className={cn(
+                "p-3 rounded-2xl bg-opacity-10 backdrop-blur-sm",
+                premium
+                  ? subscriptionType === 'EXPLORER' && color === 'blue' ? 'bg-linear-to-br from-blue-500 to-cyan-500' :
+                    subscriptionType === 'MONTHLY' && color === 'purple' ? 'bg-linear-to-br from-purple-500 to-violet-500' :
+                      subscriptionType === 'YEARLY' && color === 'amber' ? 'bg-linear-to-br from-orange-500 to-amber-500' :
+                        `bg-linear-to-br ${colorClasses[colorKey]}`
+                  : `bg-linear-to-br ${colorClasses[colorKey]}`
+              )}
             >
-              <div className={`text-linear bg-linear-to-br ${colorClasses[colorKey]} bg-clip-text text-transparent`}>
+              <div className={cn(
+                "bg-clip-text text-transparent",
+                premium
+                  ? subscriptionType === 'EXPLORER' && color === 'blue' ? 'text-linear bg-linear-to-br from-blue-600 to-cyan-600' :
+                    subscriptionType === 'MONTHLY' && color === 'purple' ? 'text-linear bg-linear-to-br from-purple-600 to-violet-600' :
+                      subscriptionType === 'YEARLY' && color === 'amber' ? 'text-linear bg-linear-to-br from-orange-600 to-amber-600' :
+                        `text-linear bg-linear-to-br ${colorClasses[colorKey]}`
+                  : `text-linear bg-linear-to-br ${colorClasses[colorKey]}`
+              )}>
                 {icon}
               </div>
             </motion.div>
@@ -1567,7 +2250,15 @@ function StatCard({ icon, label, value, subtext, color = "blue", index }: any) {
               initial={{ scale: 0.5 }}
               animate={{ scale: 1 }}
               transition={{ type: "spring", stiffness: 200 }}
-              className="text-4xl font-bold bg-linear-to-br from-gray-900 to-gray-700 bg-clip-text text-transparent"
+              className={cn(
+                "text-4xl font-bold bg-clip-text text-transparent",
+                premium
+                  ? subscriptionType === 'EXPLORER' && color === 'blue' ? 'bg-linear-to-br from-blue-600 to-cyan-600' :
+                    subscriptionType === 'MONTHLY' && color === 'purple' ? 'bg-linear-to-br from-purple-600 to-violet-600' :
+                      subscriptionType === 'YEARLY' && color === 'amber' ? 'bg-linear-to-br from-orange-600 to-amber-600' :
+                        'bg-linear-to-br from-gray-900 to-gray-700'
+                  : 'bg-linear-to-br from-gray-900 to-gray-700'
+              )}
             >
               {value}
             </motion.div>
@@ -1578,7 +2269,15 @@ function StatCard({ icon, label, value, subtext, color = "blue", index }: any) {
             initial={{ scaleX: 0 }}
             animate={{ scaleX: 1 }}
             transition={{ delay: 0.3 }}
-            className="mt-4 h-1 w-full bg-linear-to-r from-transparent via-current to-transparent opacity-20"
+            className={cn(
+              "mt-4 h-1 w-full bg-linear-to-r from-transparent to-transparent opacity-20",
+              premium
+                ? subscriptionType === 'EXPLORER' && color === 'blue' ? 'via-blue-500' :
+                  subscriptionType === 'MONTHLY' && color === 'purple' ? 'via-purple-500' :
+                    subscriptionType === 'YEARLY' && color === 'amber' ? 'via-orange-500' :
+                      `via-${color}-500`
+                : `via-${color}-500`
+            )}
           />
         </CardContent>
       </Card>

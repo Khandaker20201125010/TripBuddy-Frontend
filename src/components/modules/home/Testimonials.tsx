@@ -80,10 +80,17 @@ export function Testimonials() {
                                             <div className="relative w-14 h-14 shrink-0">
                                                 <Image
                                                     fill
-                                                    src={item.reviewer?.profileImage || `https://ui-avatars.com/api/?name=${item.reviewer?.name || 'User'}&background=random`}
+                                                    src={
+                                                        item.reviewer?.profileImage ||
+                                                        `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                                                            item.reviewer?.name || 'User'
+                                                        )}&background=random`
+                                                    }
                                                     alt="avatar"
+                                                    sizes="56px"
                                                     className="rounded-full object-cover ring-4 ring-slate-50"
                                                 />
+
                                             </div>
                                             {/* Explicitly column-based layout */}
                                             <div className="flex flex-col">
