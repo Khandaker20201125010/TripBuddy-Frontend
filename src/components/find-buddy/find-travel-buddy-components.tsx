@@ -7,7 +7,7 @@ import { BuddyFilters } from "@/components/find-buddy/BuddyFilters";
 import { MatchedTravelGrid } from "@/components/find-buddy/MatchedTravelGrid";
 import { PremiumCTA } from "@/components/find-buddy/PremiumCTA";
 import { useMatchedTravelPlans } from "@/hooks/travelshooks/useMatchedTravelPlans";
-import { useTravelStats } from "@/hooks/travelshooks/useTravelStats"; // Import new hook
+import { useTravelStats } from "@/hooks/travelshooks/useTravelStats";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,19 +18,23 @@ export default function FindTravelBuddyComponents() {
   const [page, setPage] = useState(1);
   const [sortOption, setSortOption] = useState("Best Match");
   
-  // 1. Fetch Stats & Trending
   const { stats, loading: statsLoading } = useTravelStats();
-
-  // 2. Fetch Data (Passed sortOption here)
   const { data, loading, pagination } = useMatchedTravelPlans(filters, page, 6, sortOption);
 
+  // Normal updates merge state
   const handleFilterChange = (newFilters: any) => {
     setFilters((prev: any) => ({ ...prev, ...newFilters }));
     setPage(1); 
   };
 
+  // ✅ FIX: Clear function explicitly replaces state with an empty object
+  const clearAllFilters = () => {
+    setFilters({});
+    setPage(1);
+  };
+
   const totalResults = pagination?.totalItems || 0;
-  const activeFilters = Object.keys(filters).filter(key => 
+  const activeFiltersCount = Object.keys(filters).filter(key => 
     filters[key] !== undefined && filters[key] !== ''
   ).length;
 
@@ -40,7 +44,7 @@ export default function FindTravelBuddyComponents() {
         
         {/* Header with Stats */}
         <div className="relative max-w-4xl mx-auto mb-10 md:mb-14">
-              <div className="absolute top-0 left-0 w-1/2 h-full opacity-30">
+          <div className="absolute top-0 left-0 w-1/2 h-full opacity-30">
             <div className="absolute top-10 left-20 w-40 h-40 rounded-full bg-(--color-coral) blur-[120px]" />
             <div className="absolute bottom-60 left-60 w-40 h-40 rounded-full bg-(--color-sunset) blur-[100px]" />
           </div>
@@ -71,7 +75,6 @@ export default function FindTravelBuddyComponents() {
             </p>
           </div>
 
-          {/* DYNAMIC Quick Stats */}
           <div className="flex flex-wrap justify-center gap-4 md:gap-6 mb-6">
             <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full border border-stone-200 shadow-sm min-w-[150px]">
               <Plane className="h-4 w-4 text-orange-500" />
@@ -119,28 +122,25 @@ export default function FindTravelBuddyComponents() {
                   Use filters to narrow down your perfect travel companion
                 </p>
               </div>
-              {activeFilters > 0 && (
+              {activeFiltersCount > 0 && (
                 <Button 
                   variant="ghost" 
                   size="sm"
-                  onClick={() => handleFilterChange({})}
+                  onClick={clearAllFilters} // ✅ FIX: Use clear function
                   className="text-sm text-stone-500 hover:text-stone-700"
                 >
-                  Clear all filters ({activeFilters})
+                  Clear all filters ({activeFiltersCount})
                 </Button>
               )}
             </div>
-            <BuddyFilters onChange={handleFilterChange} />
+            {/* ✅ FIX: key prop forces the filter UI to reset when filters are cleared */}
+            <BuddyFilters key={activeFiltersCount === 0 ? 'reset' : 'active'} onChange={handleFilterChange} />
           </div>
         </div>
 
-        {/* Main Content Grid */}
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            
-            {/* Main Content */}
             <div className="lg:col-span-3">
-              {/* Results Header */}
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h3 className="text-xl font-semibold text-stone-800">Matched Travelers</h3>
@@ -149,7 +149,6 @@ export default function FindTravelBuddyComponents() {
                   </p>
                 </div>
                 
-                {/* DYNAMIC SORTING CONTROL */}
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-stone-500">Sort by:</span>
                   <select 
@@ -164,7 +163,6 @@ export default function FindTravelBuddyComponents() {
                 </div>
               </div>
 
-              {/* Loading State */}
               {loading ? (
                 <div className="space-y-6">
                   {[1, 2, 3].map((i) => (
@@ -189,21 +187,20 @@ export default function FindTravelBuddyComponents() {
                   />
                 </div>
               ) : (
-                /* Empty State */
                 <div className="bg-white rounded-2xl border border-stone-200 p-12 text-center">
                   <div className="max-w-md mx-auto">
                     <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-orange-100 flex items-center justify-center">
                       <Users className="h-8 w-8 text-orange-500" />
                     </div>
                     <h3 className="text-xl font-semibold text-stone-800 mb-2">
-                      No matches found
+                      No Updated matches found
                     </h3>
                     <p className="text-stone-500 mb-6">
                       Try adjusting your filters to find more travel buddies
                     </p>
                     <Button 
                       variant="outline"
-                      onClick={() => handleFilterChange({})}
+                      onClick={clearAllFilters} // ✅ FIX: Applied here too
                       className="border-orange-200 text-orange-600 hover:bg-orange-50"
                     >
                       Clear all filters
@@ -215,10 +212,7 @@ export default function FindTravelBuddyComponents() {
 
             {/* Sidebar */}
             <div className="lg:col-span-1 space-y-6">
-              {/* Premium CTA */}
               <PremiumCTA />
-              
-              {/* Tips Card */}
               <div className="bg-linear-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-200 p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <Sparkles className="h-5 w-5 text-amber-500" />
@@ -231,7 +225,7 @@ export default function FindTravelBuddyComponents() {
                   </li>
                   <li className="flex items-start gap-2">
                     <div className="h-2 w-2 mt-1.5 rounded-full bg-amber-400"></div>
-                    <span className="text-sm text-amber-800">Message potential buddies to confirm details</span>
+                    <span className="text-sm text-amber-800">Login to your account for Joining travel plans</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <div className="h-2 w-2 mt-1.5 rounded-full bg-amber-400"></div>
@@ -240,16 +234,13 @@ export default function FindTravelBuddyComponents() {
                 </ul>
               </div>
 
-              {/* DYNAMIC Trending Destinations */}
               <div className="bg-white rounded-xl border border-stone-200 p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <TrendingUp className="h-4 w-4 text-orange-500" />
                   <h4 className="font-semibold text-stone-800">Trending Now</h4>
                 </div>
-                
                 <div className="space-y-3">
                   {statsLoading ? (
-                     // Loading Skeletons
                      [1,2,3,4].map(i => (
                         <div key={i} className="flex justify-between p-2">
                            <Skeleton className="h-4 w-24"/>
@@ -261,7 +252,6 @@ export default function FindTravelBuddyComponents() {
                       <div 
                         key={index} 
                         className="flex items-center justify-between p-3 rounded-lg hover:bg-stone-50 cursor-pointer transition-colors"
-                        // Clicking a trending item filters the main list
                         onClick={() => handleFilterChange({ destination: item.destination })}
                       >
                         <span className="text-sm text-stone-700 font-medium capitalize truncate max-w-[140px]">
@@ -292,12 +282,11 @@ export default function FindTravelBuddyComponents() {
             Join thousands of travelers finding their perfect companions
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-           <Link href="/my-travel-plans">
-            <Button size="lg" variant="gradient">
-              Share Your Trip
-            </Button>
+            <Link href="/my-travel-plans">
+              <Button size="lg" variant="gradient">
+                Share Your Trip
+              </Button>
             </Link>
-          
           </div>
         </div>
       </div>

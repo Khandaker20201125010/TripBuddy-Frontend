@@ -18,7 +18,9 @@ import {
   Award,
   Shield,
   Plane,
-  Star
+  Star,
+  Ban,
+  RefreshCw
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
@@ -31,6 +33,8 @@ import { Traveler } from '@/types/travel'
 import { useRouter } from 'next/navigation'
 import Swal from 'sweetalert2'
 import { PaymentModal } from '@/components/payment/PaymentModal'
+import api from '@/lib/axios'
+import { connectionManager } from '@/hooks/connections/connectionManager'
 
 interface TravelerCardProps {
   traveler: Traveler
@@ -44,13 +48,376 @@ export function TravelerCard({ traveler, index }: TravelerCardProps) {
 
   const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
   const [connectionDirection, setConnectionDirection] = useState<string | null>(null);
+  const [connectionId, setConnectionId] = useState<string | null>(null);
   const [isPricingOpen, setIsPricingOpen] = useState(false);
   const [localLoading, setLocalLoading] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [isCheckingConnection, setIsCheckingConnection] = useState(false);
 
   // Memoized calculations
   const userObj = useMemo(() => traveler.user || traveler, [traveler]);
   
+  const profileId = useMemo(() => {
+    const id = userObj.id || traveler.userId || traveler.id;
+    return id || '';
+  }, [userObj, traveler.userId, traveler.id]);
+
+  const isSelf = useMemo(() =>
+    session?.user?.id === profileId,
+    [session?.user?.id, profileId]
+  );
+
+  // Optimistically update connection status
+  const updateConnectionOptimistically = (status: string | null, direction: string | null, id: string | null) => {
+    setConnectionStatus(status);
+    setConnectionDirection(direction);
+    setConnectionId(id);
+  };
+
+  // Fetch actual connection status from server
+  const fetchConnectionStatus = async () => {
+    if (!session?.user?.id || !profileId || isSelf) return;
+    
+    setIsCheckingConnection(true);
+    try {
+      // Get ALL connections (including REJECTED)
+      const allConnectionsRes = await api.get('/connections/all');
+      if (allConnectionsRes.data.success) {
+        const allConnections = allConnectionsRes.data.data;
+        
+        // Find any connection with this user
+        const connectionWithUser = allConnections.find((conn: any) => 
+          (conn.senderId === session.user.id && conn.receiverId === profileId) ||
+          (conn.senderId === profileId && conn.receiverId === session.user.id)
+        );
+        
+        if (connectionWithUser) {
+          const direction = connectionWithUser.senderId === session.user.id ? 'sent' : 'received';
+          updateConnectionOptimistically(connectionWithUser.status, direction, connectionWithUser.id);
+        } else {
+          updateConnectionOptimistically(null, null, null);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching connection status:', error);
+      
+      // Fallback: Check individual endpoints
+      try {
+        // Check buddies (ACCEPTED)
+        const buddiesRes = await api.get('/connections/buddies');
+        if (buddiesRes.data.success) {
+          const buddies = buddiesRes.data.data;
+          
+          const existingConnection = buddies.find((buddy: any) => 
+            (buddy.sender.id === session.user.id && buddy.receiver.id === profileId) ||
+            (buddy.sender.id === profileId && buddy.receiver.id === session.user.id)
+          );
+          
+          if (existingConnection) {
+            const direction = existingConnection.sender.id === session.user.id ? 'sent' : 'received';
+            updateConnectionOptimistically('ACCEPTED', direction, existingConnection.id);
+            setIsCheckingConnection(false);
+            return;
+          }
+        }
+
+        // Check incoming requests (PENDING received)
+        const incomingRes = await api.get('/connections/incoming');
+        if (incomingRes.data.success) {
+          const incomingRequests = incomingRes.data.data;
+          
+          const incomingFromThisUser = incomingRequests.find((req: any) => 
+            req.sender?.id === profileId
+          );
+          
+          if (incomingFromThisUser) {
+            updateConnectionOptimistically('PENDING', 'received', incomingFromThisUser.id);
+            setIsCheckingConnection(false);
+            return;
+          }
+        }
+
+        // If we can't find any connection, set to null
+        updateConnectionOptimistically(null, null, null);
+      } catch (fallbackError) {
+        console.error('Fallback error:', fallbackError);
+        updateConnectionOptimistically(null, null, null);
+      }
+    } finally {
+      setIsCheckingConnection(false);
+    }
+  };
+
+  // Subscribe to connection updates
+  useEffect(() => {
+    if (!session?.user?.id || !profileId || isSelf) return;
+
+    const unsubscribe = connectionManager.subscribe(session.user.id, (event) => {
+      // Check if this update is for the current user in the card
+      if (event.userId === profileId) {
+        console.log('Received connection update for user:', profileId, event);
+        updateConnectionOptimistically(event.status, event.direction, event.connectionId);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [session?.user?.id, profileId, isSelf]);
+
+  // Initialize connection status
+  useEffect(() => {
+    if (!userObj) return;
+
+    const currentUserId = session?.user?.id;
+    const user = userObj as any;
+
+    // First, use data from props if available
+    if (traveler.connectionInfo) {
+      updateConnectionOptimistically(
+        traveler.connectionInfo.status,
+        traveler.connectionInfo.direction || null,
+        traveler.connectionInfo.id || null
+      );
+      return;
+    }
+
+    if (traveler.connectionStatus) {
+      updateConnectionOptimistically(
+        traveler.connectionStatus,
+        traveler.connectionDirection || null,
+        null
+      );
+      return;
+    }
+
+    if (user.connectionInfo) {
+      updateConnectionOptimistically(
+        user.connectionInfo.status,
+        user.connectionInfo.direction || null,
+        user.connectionInfo.id || null
+      );
+      return;
+    }
+
+    // If no props data, fetch from server
+    if (currentUserId && profileId && !isSelf) {
+      fetchConnectionStatus();
+    } else {
+      updateConnectionOptimistically(null, null, null);
+    }
+  }, [userObj, traveler.connectionStatus, traveler.connectionDirection, traveler.connectionInfo, session?.user?.id, profileId, isSelf]);
+
+  // Handle connect request with instant updates
+  const handleConnectClick = async () => {
+    // Authentication check
+    if (!session?.user || !session.accessToken) {
+      return Swal.fire({
+        title: 'Login Required',
+        text: 'You need to log in to connect with travelers.',
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonText: 'Log In',
+        confirmButtonColor: '#8b5cf6',
+        background: '#1c1917',
+        color: '#fafaf9',
+        customClass: { popup: 'rounded-2xl border border-stone-700' }
+      }).then((result) => {
+        if (result.isConfirmed) router.push('/login');
+      });
+    }
+
+    if (isSelf) return toast.error("You can't connect with yourself");
+    if (!profileId) return toast.error("Unable to connect: Invalid Profile ID");
+
+    const isRejected = connectionStatus === "REJECTED";
+    
+    // OPTIMISTIC UPDATE: Immediately show loading state
+    setLocalLoading(true);
+
+    // If connection was previously REJECTED, delete it first
+    if (isRejected && connectionId) {
+      try {
+        // OPTIMISTIC UPDATE: Immediately clear the rejected state
+        updateConnectionOptimistically(null, null, null);
+        
+        // Notify connection manager about deletion
+        connectionManager.notifyConnectionRemoved(session.user.id, profileId, connectionId);
+        
+        // Delete the rejected connection
+        await api.delete(`/connections/${connectionId}`, {
+          headers: {
+            'Authorization': `Bearer ${session.accessToken}`
+          }
+        });
+        
+        toast.success("Previous connection removed");
+        
+        // Fetch latest connection status
+        await fetchConnectionStatus();
+        
+        // Small delay for better UX
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Now send new connection request
+        await sendNewConnectionRequest();
+        
+      } catch (error: any) {
+        console.error('Error deleting rejected connection:', error);
+        
+        // ROLLBACK: If deletion fails, revert to previous state
+        updateConnectionOptimistically('REJECTED', connectionDirection, connectionId);
+        
+        // Fetch actual status from server
+        await fetchConnectionStatus();
+        
+        toast.error("Failed to reset connection. Please try again.");
+        setLocalLoading(false);
+        return;
+      }
+    } else {
+      // If not rejected, just send new request
+      await sendNewConnectionRequest();
+    }
+  };
+
+  // Separate function for sending new connection request with optimistic updates
+  const sendNewConnectionRequest = async () => {
+    try {
+      // OPTIMISTIC UPDATE: Immediately show as PENDING
+      updateConnectionOptimistically('PENDING', 'sent', null);
+      
+      // Notify connection manager about new request
+      connectionManager.notify(session!.user!.id, {
+        userId: profileId,
+        status: 'PENDING',
+        direction: 'sent',
+        connectionId: null
+      });
+      
+      const result = await sendRequest(profileId, session!.accessToken!);
+
+      if (result) {
+        // Update with actual data from server
+        updateConnectionOptimistically('PENDING', 'sent', result.id || null);
+        
+        // Notify connection manager with actual connection ID
+        connectionManager.notify(session!.user!.id, {
+          userId: profileId,
+          status: 'PENDING',
+          direction: 'sent',
+          connectionId: result.id || null
+        });
+        
+        toast.success("Connection request sent!");
+        
+        // Fetch latest status from server to confirm
+        await fetchConnectionStatus();
+      }
+    } catch (error: any) {
+      // ROLLBACK: If request fails, revert to no connection
+      updateConnectionOptimistically(null, null, null);
+      
+      // Notify connection manager about failure
+      connectionManager.notify(session!.user!.id, {
+        userId: profileId,
+        status: null,
+        direction: null,
+        connectionId: null
+      });
+      
+      // Fetch actual status from server after error
+      await fetchConnectionStatus();
+      
+      // Handle limits
+      if (error?.statusCode === 403 || error?.message?.toLowerCase().includes("limit")) {
+        return Swal.fire({
+          title: 'Upgrade Required',
+          text: error.message || 'Connect with more travelers by upgrading your plan.',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Upgrade',
+          confirmButtonColor: '#8b5cf6',
+          background: '#1c1917',
+          color: '#fafaf9',
+          customClass: { popup: 'rounded-2xl border border-stone-700' }
+        }).then((result) => {
+          if (result.isConfirmed) setIsPricingOpen(true);
+        });
+      }
+
+      // Handle conflicts (already exists)
+      if (error?.statusCode === 409) {
+        // Refresh connection status to get actual state
+        await fetchConnectionStatus();
+        return toast.info("Request already sent");
+      }
+
+      toast.error(error?.message || "Failed to send request");
+    } finally {
+      setLocalLoading(false);
+    }
+  };
+
+  // Handle accepting/rejecting incoming requests
+  const handleRespondToRequest = async (status: 'ACCEPTED' | 'REJECTED') => {
+  if (!connectionId || !session?.accessToken) return;
+  
+  setLocalLoading(true);
+  try {
+    // OPTIMISTIC UPDATE: Immediately update UI
+    updateConnectionOptimistically(status, 'received', connectionId);
+    
+    // Notify connection manager about response
+    connectionManager.notify(session.user.id, {
+      userId: profileId,
+      status: status,
+      direction: 'received',
+      connectionId: connectionId
+    });
+    
+    const response = await api.patch(
+      `/connections/respond/${connectionId}`,
+      { status },
+      {
+        headers: {
+          'Authorization': `Bearer ${session.accessToken}`
+        }
+      }
+    );
+    
+    if (response.data.success) {
+      // Notify the other user about the response
+      connectionManager.notify(profileId, {
+        userId: session.user.id,
+        status: status,
+        direction: 'sent',
+        connectionId: connectionId
+      });
+      
+      toast.success(`Request ${status.toLowerCase()} successfully`);
+      
+      // Fetch latest status from server
+      await fetchConnectionStatus();
+    }
+  } catch (error: any) {
+    console.error('Error responding to request:', error);
+    
+    // ROLLBACK: Fetch actual status from server
+    await fetchConnectionStatus();
+    
+    toast.error(error?.message || `Failed to ${status.toLowerCase()} request`);
+  } finally {
+    setLocalLoading(false);
+  }
+};
+
+  const isLoading = localLoading || isConnectionLoading || isCheckingConnection;
+  const isPending = connectionStatus === "PENDING";
+  const isAccepted = connectionStatus === "ACCEPTED";
+  const isRejected = connectionStatus === "REJECTED";
+  const isIncomingRequest = isPending && connectionDirection === "received";
+
   // Safely access properties with type guards
   const isPremium = useMemo(() => {
     const user = userObj as any;
@@ -61,16 +428,6 @@ export function TravelerCard({ traveler, index }: TravelerCardProps) {
     const user = userObj as any;
     return user.verified === true || user.isVerified === true;
   }, [userObj]);
-
-  const profileId = useMemo(() => {
-    const id = userObj.id || traveler.userId || traveler.id;
-    return id || '';
-  }, [userObj, traveler.userId, traveler.id]);
-
-  const isSelf = useMemo(() =>
-    session?.user?.id === profileId,
-    [session?.user?.id, profileId]
-  );
 
   const visitedCountriesCount = useMemo(() => {
     const user = userObj as any;
@@ -110,165 +467,6 @@ export function TravelerCard({ traveler, index }: TravelerCardProps) {
     return <Plane className="h-3 w-3" />;
   }, [isExpert, isPremium]);
 
-  // Initialize connection status
-  useEffect(() => {
-    if (!userObj) return;
-
-    const currentUserId = session?.user?.id;
-    const user = userObj as any;
-
-    // Priority 1: traveler.connectionStatus (from parent)
-    if (traveler.connectionStatus) {
-      setConnectionStatus(traveler.connectionStatus);
-      setConnectionDirection(traveler.connectionDirection || null);
-      return;
-    }
-
-    // Priority 2: connectionInfo
-    if (user.connectionInfo) {
-      setConnectionStatus(user.connectionInfo.status);
-      setConnectionDirection(user.connectionInfo.direction);
-      return;
-    }
-
-    // Priority 3: Check connections arrays
-    if (user.receivedConnections && user.receivedConnections.length > 0 && currentUserId) {
-      const connectionFromCurrentUser = user.receivedConnections.find(
-        (conn: any) => conn.senderId === currentUserId
-      );
-      if (connectionFromCurrentUser) {
-        setConnectionStatus(connectionFromCurrentUser.status);
-        setConnectionDirection('sent');
-        return;
-      }
-    }
-
-    if (user.sentConnections && user.sentConnections.length > 0 && currentUserId) {
-      const connectionToCurrentUser = user.sentConnections.find(
-        (conn: any) => conn.receiverId === currentUserId
-      );
-      if (connectionToCurrentUser) {
-        setConnectionStatus(connectionToCurrentUser.status);
-        setConnectionDirection('received');
-        return;
-      }
-    }
-
-    // Default: no connection
-    setConnectionStatus(null);
-    setConnectionDirection(null);
-  }, [userObj, traveler.connectionStatus, traveler.connectionDirection, session?.user?.id]);
-
-  // Handle connect request
-  const handleConnectClick = async () => {
-    // Authentication check
-    if (!session?.user || !session.accessToken) {
-      return Swal.fire({
-        title: 'Login Required',
-        text: 'You need to log in to connect with travelers.',
-        icon: 'info',
-        showCancelButton: true,
-        confirmButtonText: 'Log In',
-        confirmButtonColor: '#8b5cf6',
-        background: '#1c1917',
-        color: '#fafaf9',
-        customClass: { popup: 'rounded-2xl border border-stone-700' }
-      }).then((result) => {
-        if (result.isConfirmed) router.push('/login');
-      });
-    }
-
-    if (isSelf) return toast.error("You can't connect with yourself");
-    if (!profileId) return toast.error("Unable to connect: Invalid Profile ID");
-
-    setLocalLoading(true);
-
-    try {
-      const result = await sendRequest(profileId, session.accessToken);
-
-      if (result) {
-        setConnectionStatus("PENDING");
-        setConnectionDirection("sent");
-
-        // Store for persistence
-        localStorage.setItem(`connection_${profileId}`, JSON.stringify({
-          status: "PENDING",
-          direction: "sent",
-          timestamp: Date.now()
-        }));
-
-        toast.success("Connection request sent!");
-      }
-    } catch (error: any) {
-      // Handle limits
-      if (error?.statusCode === 403 || error?.message?.toLowerCase().includes("limit")) {
-        return Swal.fire({
-          title: 'Upgrade Required',
-          text: error.message || 'Connect with more travelers by upgrading your plan.',
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonText: 'Upgrade',
-          confirmButtonColor: '#8b5cf6',
-          background: '#1c1917',
-          color: '#fafaf9',
-          customClass: { popup: 'rounded-2xl border border-stone-700' }
-        }).then((result) => {
-          if (result.isConfirmed) setIsPricingOpen(true);
-        });
-      }
-
-      // Handle conflicts
-      if (error?.statusCode === 409) {
-        setConnectionStatus("PENDING");
-        setConnectionDirection("sent");
-        localStorage.setItem(`connection_${profileId}`, JSON.stringify({
-          status: "PENDING",
-          direction: "sent",
-          timestamp: Date.now()
-        }));
-        return toast.info("Request already sent");
-      }
-
-      toast.error(error?.message || "Failed to send request");
-    } finally {
-      setLocalLoading(false);
-    }
-  };
-
-  // Check localStorage for persisted status
-  useEffect(() => {
-    if (profileId && !connectionStatus) {
-      const stored = localStorage.getItem(`connection_${profileId}`);
-      if (stored) {
-        try {
-          const data = JSON.parse(stored);
-          // Keep for 1 hour
-          if (Date.now() - data.timestamp < 3600000) {
-            setConnectionStatus(data.status);
-            setConnectionDirection(data.direction);
-          } else {
-            localStorage.removeItem(`connection_${profileId}`);
-          }
-        } catch (error) {
-          console.error('Error parsing localStorage:', error);
-        }
-      }
-    }
-  }, [profileId, connectionStatus]);
-
-  // Clean up on accepted
-  useEffect(() => {
-    if (connectionStatus === "ACCEPTED" && profileId) {
-      localStorage.removeItem(`connection_${profileId}`);
-    }
-  }, [connectionStatus, profileId]);
-
-  const isLoading = localLoading || isConnectionLoading;
-  const isPending = connectionStatus === "PENDING";
-  const isAccepted = connectionStatus === "ACCEPTED";
-  // Fix: Ensure we correctly identify if I received the request
-  const isIncomingRequest = isPending && connectionDirection === "received";
-
   // Safely get the user's name
   const userName = useMemo(() => {
     const user = userObj as any;
@@ -303,8 +501,6 @@ export function TravelerCard({ traveler, index }: TravelerCardProps) {
       onMouseLeave={() => setIsHovered(false)}
     >
       <Card className="group relative h-full overflow-hidden border border-stone-200/50 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-2xl transition-all duration-300 rounded-2xl hover:bg-white hover:border-stone-300">
-        {/* FIX: Added pointer-events-none so this div doesn't block clicks 
-        */}
         <div className={`absolute inset-0 bg-linear-to-br from-transparent via-white to-transparent transition-opacity duration-500 pointer-events-none ${isHovered ? 'opacity-30' : 'opacity-0'}`} />
         
         {/* Badge in corner */}
@@ -348,7 +544,7 @@ export function TravelerCard({ traveler, index }: TravelerCardProps) {
                 {userName}
               </h3>
               <div className="flex items-center justify-center text-sm text-stone-500 mt-1 gap-1">
-                <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+                <MapPin className="h-3.5 w-3.5 shrink-0" />
                 <span className="line-clamp-1">
                   {location}
                 </span>
@@ -385,8 +581,18 @@ export function TravelerCard({ traveler, index }: TravelerCardProps) {
               </div>
             </div>
 
-            {/* Connection Status Badge */}
-            {connectionStatus && (
+            {/* Connection Status Badge - REMOVED the REJECTED badge */}
+            {isCheckingConnection ? (
+              <div className="pt-2">
+                <Badge
+                  variant="outline"
+                  className="w-full justify-center py-2 border border-stone-200 bg-stone-50 text-stone-500"
+                >
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  Checking...
+                </Badge>
+              </div>
+            ) : connectionStatus && connectionStatus !== "REJECTED" ? ( // CHANGED: Hide REJECTED status badge
               <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
@@ -398,7 +604,6 @@ export function TravelerCard({ traveler, index }: TravelerCardProps) {
                     w-full justify-center py-2 border font-medium
                     ${isPending ? 'bg-amber-50 text-amber-700 border-amber-200' : ''}
                     ${isAccepted ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : ''}
-                    ${connectionStatus === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-200' : ''}
                   `}
                 >
                   {isIncomingRequest && <Clock className="h-3.5 w-3.5 mr-1.5" />}
@@ -408,65 +613,113 @@ export function TravelerCard({ traveler, index }: TravelerCardProps) {
                   {isIncomingRequest && 'Request Received'}
                   {!isIncomingRequest && isPending && 'Request Sent'}
                   {isAccepted && 'Connected'}
-                  {connectionStatus === 'REJECTED' && 'Rejected'}
                 </Badge>
               </motion.div>
-            )}
+            ) : null}
           </div>
         </CardContent>
 
-        {/* FIX: Added relative and z-10 to ensure buttons are clickable */}
         <CardFooter className="relative z-10 p-5 pt-0 border-t border-stone-100 bg-linear-to-t from-stone-50/50 to-transparent">
           <div className="grid grid-cols-2 gap-3 w-full">
-            {/* Connect Button */}
-            <Button
-              size="sm"
-              variant={"gradient"}
-              className={`
-                w-full text-sm font-medium transition-all duration-300
-                ${isAccepted 
-                  ? 'bg-linear-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white' 
-                  : isPending 
-                    ? 'bg-linear-to-r from-stone-200 to-stone-300 text-stone-700 hover:from-stone-300 hover:to-stone-400'
-                    : ''
-                }
-              `}
-              onClick={handleConnectClick}
-              disabled={isLoading || (isPending && !isIncomingRequest) || isAccepted || isSelf || !profileId}
-            >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : isAccepted ? (
-                <>
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Connected
-                </>
-              ) : isPending ? (
-                <>
-                  <Clock className="h-4 w-4 mr-2" />
-                  {isIncomingRequest ? 'Respond' : 'Pending'}
-                </>
-              ) : (
-                <>
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Connect
-                </>
-              )}
-            </Button>
+            {/* Connect/Accept/Reject Button */}
+            {isIncomingRequest ? (
+              <>
+                {/* Accept Button */}
+                <Button
+                  size="sm"
+                  variant={"gradient"}
+                  className="w-full text-sm font-medium transition-all duration-300 bg-linear-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white"
+                  onClick={() => handleRespondToRequest('ACCEPTED')}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      Accept
+                    </>
+                  )}
+                </Button>
 
-            {/* View Profile Button */}
-            {/* Removed prefetch={false} to ensure standard behavior */}
-            <Link href={`/PublicVisitProfile/${profileId}`} className="w-full">
-              <Button
-                size="sm"
-                variant="outline"
-                className="cursor-pointer w-full text-sm font-medium border-stone-300 text-stone-700 hover:bg-stone-100 hover:text-stone-900 hover:border-stone-400 transition-all duration-300"
-                disabled={!profileId}
-              >
-                Profile
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            </Link>
+                {/* Reject Button */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full text-sm font-medium border-red-300 text-red-700 hover:bg-red-50 hover:text-red-800 hover:border-red-400 transition-all duration-300"
+                  onClick={() => handleRespondToRequest('REJECTED')}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Ban className="h-4 w-4 mr-2" />
+                      Decline
+                    </>
+                  )}
+                </Button>
+              </>
+            ) : (
+              <>
+                {/* Connect Button - Show for all states including REJECTED */}
+                <Button
+                  size="sm"
+                  variant={"gradient"}
+                  className={`
+                    w-full text-sm font-medium transition-all duration-300
+                    ${isAccepted 
+                      ? 'bg-linear-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white' 
+                      : isPending && !isIncomingRequest
+                        ? 'bg-linear-to-r from-stone-200 to-stone-300 text-stone-700 hover:from-stone-300 hover:to-stone-400'
+                        : isRejected
+                          ? 'bg-linear-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white'
+                          : 'bg-linear-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white'
+                    }
+                  `}
+                  onClick={handleConnectClick}
+                  disabled={isLoading || (isPending && !isIncomingRequest) || isAccepted || isSelf || !profileId}
+                  // Note: isRejected is NOT in disabled condition - user can reconnect
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : isAccepted ? (
+                    <>
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      Connected
+                    </>
+                  ) : isPending && !isIncomingRequest ? (
+                    <>
+                      <Clock className="h-4 w-4 mr-2" />
+                      Pending
+                    </>
+                  ) : isRejected ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Connect
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Connect
+                    </>
+                  )}
+                </Button>
+
+                {/* View Profile Button */}
+                <Link href={`/PublicVisitProfile/${profileId}`} className="w-full">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="cursor-pointer w-full text-sm font-medium border-stone-300 text-stone-700 hover:bg-stone-100 hover:text-stone-900 hover:border-stone-400 transition-all duration-300"
+                    disabled={!profileId}
+                  >
+                    Profile
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </CardFooter>
       </Card>

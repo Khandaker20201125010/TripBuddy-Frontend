@@ -196,7 +196,7 @@ export function PaymentModal({ onClose }: PaymentModalProps) {
                 transition={{ delay: index * 0.1 }}
                 className={`relative rounded-2xl p-6 flex flex-col border ${
                   plan.highlighted 
-                    ? 'bg-gradient-to-b from-orange-500 to-orange-600 text-white shadow-xl scale-100 md:scale-105 border-orange-400 z-10' 
+                    ? 'bg-linear-to-b from-orange-500 to-orange-600 text-white shadow-xl scale-100 md:scale-105 border-orange-400 z-10' 
                     : 'bg-white text-gray-900 shadow-md border-stone-100'
                 }`}
               >

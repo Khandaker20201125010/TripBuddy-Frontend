@@ -2,14 +2,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
 import {
     MapPin, Calendar, Star, Globe,
     Briefcase, CheckCircle, Shield, AlertCircle,
-    Sparkles, UserPlus, Clock, Loader2
+    Sparkles, UserPlus, Clock, Loader2,
+    Ban, RefreshCw
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -26,6 +27,8 @@ import { Traveler } from '@/types/travel'
 import { useRouter } from 'next/navigation'
 import Swal from 'sweetalert2'
 import { PaymentModal } from '../payment/PaymentModal'
+import { connectionManager } from '@/hooks/connections/connectionManager'
+import api from '@/lib/axios'
 
 interface PublicViewProfileProps {
     traveler?: Traveler
@@ -45,118 +48,206 @@ const PublicViewProfileComponent = ({ traveler }: PublicViewProfileProps) => {
     
     const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
     const [connectionDirection, setConnectionDirection] = useState<string | null>(null);
+    const [connectionId, setConnectionId] = useState<string | null>(null);
     const [localLoading, setLocalLoading] = useState(false);
+    const [isCheckingConnection, setIsCheckingConnection] = useState(false);
 
     // Logic to determine profile IDs and connection status
     const profileId = user?.id || traveler?.userId || traveler?.id
     const isSelf = session?.user?.id === profileId
 
+    // Fetch connection status from server
+    const fetchConnectionStatus = useCallback(async () => {
+        if (!session?.user?.id || !profileId || isSelf) {
+            setConnectionStatus(null);
+            setConnectionDirection(null);
+            setConnectionId(null);
+            return;
+        }
+        
+        setIsCheckingConnection(true);
+        try {
+            // Get ALL connections (including REJECTED)
+            const allConnectionsRes = await api.get('/connections/all');
+            if (allConnectionsRes.data.success) {
+                const allConnections = allConnectionsRes.data.data;
+                
+                // Find any connection with this user
+                const connectionWithUser = allConnections.find((conn: any) => 
+                    (conn.senderId === session.user.id && conn.receiverId === profileId) ||
+                    (conn.senderId === profileId && conn.receiverId === session.user.id)
+                );
+                
+                if (connectionWithUser) {
+                    const direction = connectionWithUser.senderId === session.user.id ? 'sent' : 'received';
+                    setConnectionStatus(connectionWithUser.status);
+                    setConnectionDirection(direction);
+                    setConnectionId(connectionWithUser.id);
+                    
+                    console.log('Found connection:', {
+                        status: connectionWithUser.status,
+                        direction: direction,
+                        id: connectionWithUser.id
+                    });
+                    
+                    // Update localStorage
+                    localStorage.setItem(`connection_${profileId}`, JSON.stringify({
+                        status: connectionWithUser.status,
+                        direction: direction,
+                        connectionId: connectionWithUser.id,
+                        timestamp: Date.now()
+                    }));
+                } else {
+                    setConnectionStatus(null);
+                    setConnectionDirection(null);
+                    setConnectionId(null);
+                    localStorage.removeItem(`connection_${profileId}`);
+                    console.log('No connection found');
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching connection status:', error);
+            // Fallback to localStorage if available
+            const storedConnection = localStorage.getItem(`connection_${profileId}`);
+            if (storedConnection) {
+                try {
+                    const connectionData = JSON.parse(storedConnection);
+                    if (Date.now() - connectionData.timestamp < 3600000) { // 1 hour
+                        setConnectionStatus(connectionData.status);
+                        setConnectionDirection(connectionData.direction);
+                        setConnectionId(connectionData.connectionId || null);
+                        console.log('Using localStorage connection:', connectionData);
+                        return;
+                    } else {
+                        localStorage.removeItem(`connection_${profileId}`);
+                    }
+                } catch (parseError) {
+                    console.error('Error parsing localStorage connection data:', parseError);
+                }
+            }
+            setConnectionStatus(null);
+            setConnectionDirection(null);
+            setConnectionId(null);
+        } finally {
+            setIsCheckingConnection(false);
+        }
+    }, [session?.user?.id, profileId, isSelf]);
+
+    // Subscribe to connection updates
     useEffect(() => {
-        const fetchUser = async () => {
-            if (!userId) {
-                setLoading(false)
+        if (!session?.user?.id || !profileId || isSelf) return;
+
+        const unsubscribe = connectionManager.subscribe(session.user.id, (event) => {
+            // Check if this update is for the user we're viewing
+            if (event.userId === profileId) {
+                console.log('PublicProfile: Received connection update', event);
+                setConnectionStatus(event.status);
+                setConnectionDirection(event.direction);
+                setConnectionId(event.connectionId);
+                
+                // Update localStorage for persistence
+                if (event.status) {
+                    localStorage.setItem(`connection_${profileId}`, JSON.stringify({
+                        status: event.status,
+                        direction: event.direction,
+                        connectionId: event.connectionId,
+                        timestamp: Date.now()
+                    }));
+                } else {
+                    localStorage.removeItem(`connection_${profileId}`);
+                }
+                
+                // Refresh user data if connection status changed
+                if (event.status === 'ACCEPTED' || event.status === 'REJECTED') {
+                    fetchUserData();
+                }
+            }
+        });
+
+        return () => {
+            unsubscribe();
+        };
+    }, [session?.user?.id, profileId, isSelf]);
+
+    // Fetch user data
+    const fetchUserData = async () => {
+        if (!userId) {
+            setLoading(false)
+            return
+        }
+
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL
+        try {
+            setLoading(true)
+            const res = await fetch(`${apiUrl}/user/${userId}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(session?.accessToken && { 'Authorization': `Bearer ${session.accessToken}` })
+                },
+                cache: 'no-store'
+            })
+
+            if (!res.ok) {
+                setErrorDetails(`Error ${res.status}: ${res.statusText}`)
                 return
             }
 
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL
-            try {
-                setLoading(true)
-                const res = await fetch(`${apiUrl}/user/${userId}`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        // IMPORTANT: Pass token so backend can return connection status for the logged-in user
-                        ...(session?.accessToken && { 'Authorization': `Bearer ${session.accessToken}` })
+            const json = await res.json()
+            if (json.success && json.data) {
+                const data = json.data
+                const newUser = {
+                    ...data,
+                    interests: data.interests || [],
+                    visitedCountries: data.visitedCountries || [],
+                    stats: {
+                        hosted: data.travelPlans?.length || 0,
+                        joined: data.joinedTrips?.length || 0,
+                        reviews: data.reviewsReceived?.length || 0
                     },
-                    cache: 'no-store'
-                })
-
-                if (!res.ok) {
-                    setErrorDetails(`Error ${res.status}: ${res.statusText}`)
-                    return
+                    travelPlans: data.travelPlans || [],
+                    reviews: data.reviewsReceived || [],
+                    sentConnections: data.sentConnections || [],
+                    receivedConnections: data.receivedConnections || []
                 }
-
-                const json = await res.json()
-                if (json.success && json.data) {
-                    const data = json.data
-                    const newUser = {
-                        ...data,
-                        interests: data.interests || [],
-                        visitedCountries: data.visitedCountries || [],
-                        stats: {
-                            hosted: data.travelPlans?.length || 0,
-                            joined: data.joinedTrips?.length || 0,
-                            reviews: data.reviewsReceived?.length || 0
-                        },
-                        travelPlans: data.travelPlans || [],
-                        reviews: data.reviewsReceived || []
+                setUser(newUser)
+                
+                // Check for connection info in user data first
+                if (data.connectionInfo) {
+                    console.log('Found connectionInfo in user data:', data.connectionInfo);
+                    setConnectionStatus(data.connectionInfo.status);
+                    setConnectionDirection(data.connectionInfo.direction);
+                    setConnectionId(data.connectionInfo.id || null);
+                } else {
+                    // After fetching user, fetch connection status from API
+                    if (session?.user?.id && !isSelf) {
+                        await fetchConnectionStatus();
                     }
-                    setUser(newUser)
-                    
-                    // Check localStorage for pending connection
-                    const storedConnection = localStorage.getItem(`connection_${data.id}`);
-                    if (storedConnection) {
-                        try {
-                            const connectionData = JSON.parse(storedConnection);
-                            if (Date.now() - connectionData.timestamp < 3600000) {
-                                setConnectionStatus(connectionData.status);
-                                setConnectionDirection(connectionData.direction);
-                                return;
-                            } else {
-                                localStorage.removeItem(`connection_${data.id}`);
-                            }
-                        } catch (error) {
-                            console.error('Error parsing localStorage connection data:', error);
-                        }
-                    }
-                    
-                    // Extract connection status from user data
-                    const currentUserId = session?.user?.id;
-                    let foundStatus = null;
-                    let foundDirection = null;
-                    
-                    // Check if current user sent connection to this user
-                    if (data.receivedConnections && data.receivedConnections.length > 0 && currentUserId) {
-                        const connectionFromCurrentUser = data.receivedConnections.find(
-                            (conn: any) => conn.senderId === currentUserId
-                        );
-                        if (connectionFromCurrentUser) {
-                            foundStatus = connectionFromCurrentUser.status;
-                            foundDirection = 'sent';
-                        }
-                    }
-                    
-                    // Check if this user sent connection to current user
-                    if (!foundStatus && data.sentConnections && data.sentConnections.length > 0 && currentUserId) {
-                        const connectionToCurrentUser = data.sentConnections.find(
-                            (conn: any) => conn.receiverId === currentUserId
-                        );
-                        if (connectionToCurrentUser) {
-                            foundStatus = connectionToCurrentUser.status;
-                            foundDirection = 'received';
-                        }
-                    }
-                    
-                    // Check connectionInfo field if available
-                    if (!foundStatus && data.connectionInfo) {
-                        foundStatus = data.connectionInfo.status;
-                        foundDirection = data.connectionInfo.direction;
-                    }
-                    
-                    setConnectionStatus(foundStatus);
-                    setConnectionDirection(foundDirection);
                 }
-            } catch (error) {
-                setErrorDetails("Network connection failed")
-            } finally {
-                setLoading(false)
             }
+        } catch (error) {
+            console.error('Error fetching user:', error);
+            setErrorDetails("Network connection failed")
+        } finally {
+            setLoading(false)
         }
+    }
 
-        fetchUser()
+    // Initial data fetch
+    useEffect(() => {
+        fetchUserData();
     }, [userId, session?.accessToken, session?.user?.id])
 
+    // Also check connection status when session changes
+    useEffect(() => {
+        if (session?.user?.id && profileId && !isSelf && !loading) {
+            fetchConnectionStatus();
+        }
+    }, [session?.user?.id, profileId, isSelf, loading]);
+
     const handleConnectClick = async () => {
+        console.log('Connect clicked, current status:', connectionStatus);
+        
         // 1. Unauthenticated Check
         if (!session?.accessToken || !session?.user) {
             return Swal.fire({
@@ -173,25 +264,83 @@ const PublicViewProfileComponent = ({ traveler }: PublicViewProfileProps) => {
 
         if (isSelf) return toast.error("You cannot connect with yourself");
 
+        // Check if connection already exists
+        if (connectionStatus && connectionStatus !== 'REJECTED') {
+            console.log('Connection already exists:', connectionStatus);
+            return toast.info(`Connection already ${connectionStatus.toLowerCase()}`);
+        }
+
         setLocalLoading(true);
 
         try {
+            console.log('Sending connection request to:', profileId);
+            
+            // OPTIMISTIC UPDATE
+            setConnectionStatus('PENDING');
+            setConnectionDirection('sent');
+            
+            // Notify connection manager immediately
+            connectionManager.notify(session.user.id, {
+                userId: profileId,
+                status: 'PENDING',
+                direction: 'sent',
+                connectionId: null
+            });
+            
+            // Send the actual request
             const result = await sendRequest(profileId, session.accessToken);
 
             if (result) {
-                setConnectionStatus("PENDING");
-                setConnectionDirection("sent");
+                console.log('Request sent successfully:', result);
                 
-                // Store in localStorage for persistence
+                // Update with actual data from server
+                setConnectionStatus('PENDING');
+                setConnectionDirection('sent');
+                setConnectionId(result.id || null);
+                
+                // Notify connection manager with actual connection ID
+                connectionManager.notify(session.user.id, {
+                    userId: profileId,
+                    status: 'PENDING',
+                    direction: 'sent',
+                    connectionId: result.id || null
+                });
+                
+                // Store in localStorage
                 localStorage.setItem(`connection_${profileId}`, JSON.stringify({
-                    status: "PENDING",
-                    direction: "sent",
+                    status: 'PENDING',
+                    direction: 'sent',
+                    connectionId: result.id || null,
                     timestamp: Date.now()
                 }));
                 
                 toast.success("Connection request sent!");
+                
+                // Fetch latest status from server to confirm
+                await fetchConnectionStatus();
             }
         } catch (error: any) {
+            console.error('Error sending connection request:', error);
+            
+            // ROLLBACK on error
+            setConnectionStatus(null);
+            setConnectionDirection(null);
+            setConnectionId(null);
+            
+            // Notify connection manager about failure
+            connectionManager.notify(session.user.id, {
+                userId: profileId,
+                status: null,
+                direction: null,
+                connectionId: null
+            });
+            
+            // Remove from localStorage
+            localStorage.removeItem(`connection_${profileId}`);
+            
+            // Fetch actual status from server after error
+            await fetchConnectionStatus();
+            
             // Handle Limits
             if (error.statusCode === 403 || error.message?.toLowerCase().includes("limit reached")) {
                 return Swal.fire({
@@ -212,17 +361,82 @@ const PublicViewProfileComponent = ({ traveler }: PublicViewProfileProps) => {
             
             // Handle Conflicts (Already Exists)
             if (error.statusCode === 409 || error.message?.includes("already exists")) {
-                setConnectionStatus("PENDING");
-                setConnectionDirection("sent");
-                localStorage.setItem(`connection_${profileId}`, JSON.stringify({
-                    status: "PENDING",
-                    direction: "sent",
-                    timestamp: Date.now()
-                }));
+                // Refresh connection status to get actual state
+                await fetchConnectionStatus();
                 return toast.info("Request already sent.");
             }
 
             toast.error(error.message || "Failed to send request.");
+        } finally {
+            setLocalLoading(false);
+        }
+    };
+
+    // Handle accepting/rejecting incoming requests
+    const handleRespondToRequest = async (status: 'ACCEPTED' | 'REJECTED') => {
+        if (!connectionId || !session?.accessToken) return;
+        
+        console.log('Responding to request:', { status, connectionId });
+        
+        setLocalLoading(true);
+        try {
+            // OPTIMISTIC UPDATE: Immediately update UI
+            setConnectionStatus(status);
+            setConnectionDirection('received');
+            
+            // Notify connection manager about response
+            connectionManager.notify(session.user.id, {
+                userId: profileId,
+                status: status,
+                direction: 'received',
+                connectionId: connectionId
+            });
+            
+            const response = await api.patch(
+                `/connections/respond/${connectionId}`,
+                { status },
+                {
+                    headers: {
+                        'Authorization': `Bearer ${session.accessToken}`
+                    }
+                }
+            );
+            
+            if (response.data.success) {
+                console.log('Response successful:', response.data);
+                
+                // Notify the other user about the response
+                connectionManager.notify(profileId, {
+                    userId: session.user.id,
+                    status: status,
+                    direction: 'sent',
+                    connectionId: connectionId
+                });
+                
+                toast.success(`Request ${status.toLowerCase()} successfully`);
+                
+                // Update localStorage
+                if (status === "ACCEPTED") {
+                    localStorage.removeItem(`connection_${profileId}`);
+                } else {
+                    localStorage.setItem(`connection_${profileId}`, JSON.stringify({
+                        status: status,
+                        direction: 'received',
+                        connectionId: connectionId,
+                        timestamp: Date.now()
+                    }));
+                }
+                
+                // Refresh user data
+                await fetchUserData();
+            }
+        } catch (error: any) {
+            console.error('Error responding to request:', error);
+            
+            // ROLLBACK: Fetch actual status from server
+            await fetchConnectionStatus();
+            
+            toast.error(error?.message || `Failed to ${status.toLowerCase()} request`);
         } finally {
             setLocalLoading(false);
         }
@@ -248,10 +462,120 @@ const PublicViewProfileComponent = ({ traveler }: PublicViewProfileProps) => {
         </div>
     )
 
-    const isLoading = localLoading || isConnectionLoading;
+    const isLoading = localLoading || isConnectionLoading || isCheckingConnection;
     const isPending = connectionStatus === "PENDING";
     const isAccepted = connectionStatus === "ACCEPTED";
-    const isIncomingRequest = connectionStatus === "PENDING" && connectionDirection === "received";
+    const isRejected = connectionStatus === "REJECTED";
+    const isIncomingRequest = isPending && connectionDirection === "received";
+
+    console.log('Connection state:', {
+        status: connectionStatus,
+        direction: connectionDirection,
+        isPending,
+        isAccepted,
+        isRejected,
+        isIncomingRequest,
+        profileId,
+        isSelf
+    });
+
+    // Render connection button based on status
+    const renderConnectionButton = () => {
+        if (isCheckingConnection) {
+            return (
+                <Button
+                    variant="secondary"
+                    size="lg"
+                    disabled
+                >
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Checking...
+                </Button>
+            );
+        }
+
+        if (isIncomingRequest) {
+            return (
+                <div className="flex gap-3">
+                    <Button
+                        variant="default"
+                        size="lg"
+                        className="bg-green-500 hover:bg-green-600 text-white"
+                        onClick={() => handleRespondToRequest('ACCEPTED')}
+                        disabled={isLoading}
+                    >
+                        {isLoading ? (
+                            <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Accepting...
+                            </>
+                        ) : (
+                            <>
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                Accept Request
+                            </>
+                        )}
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="lg"
+                        className="border-red-300 text-red-700 hover:bg-red-50 hover:text-red-800 hover:border-red-400"
+                        onClick={() => handleRespondToRequest('REJECTED')}
+                        disabled={isLoading}
+                    >
+                        <Ban className="h-4 w-4 mr-2" />
+                        Decline
+                    </Button>
+                </div>
+            );
+        }
+
+        return (
+            <Button
+                variant={isPending || isAccepted || isRejected ? "secondary" : "default"}
+                size="lg"
+                className={`
+                    ${isAccepted 
+                        ? 'bg-green-100 text-green-700 hover:bg-green-200 border-green-200' 
+                        : isPending
+                            ? 'bg-stone-200 text-stone-600 hover:bg-stone-300 border-stone-300'
+                            : isRejected
+                                ? 'bg-rose-100 text-rose-700 hover:bg-rose-200 border-rose-200'
+                                : 'bg-orange-500 hover:bg-orange-600 text-white border-orange-500'
+                    }
+                `}
+                onClick={handleConnectClick}
+                disabled={isLoading || (isPending && !isIncomingRequest) || isAccepted || isSelf}
+            >
+                {isLoading ? (
+                    <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Sending...
+                    </>
+                ) : isAccepted ? (
+                    <>
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Connected
+                    </>
+                ) : isPending ? (
+                    <>
+                        <Clock className="h-4 w-4 mr-2" />
+                        Request Sent
+                    </>
+                ) : isRejected ? (
+                    <>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Connect Again
+                    </>
+                ) : (
+                    <>
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Request Buddy
+                    </>
+                )}
+            </Button>
+        );
+    };
 
     return (
         <div className="min-h-screen bg-stone-50 pb-20">
@@ -283,61 +607,52 @@ const PublicViewProfileComponent = ({ traveler }: PublicViewProfileProps) => {
                         <p className="text-stone-500 text-lg">{user.email}</p>
                         
                         {/* Show connection status badge */}
-                        {connectionStatus && (
+                        {isCheckingConnection ? (
+                            <div className="mt-2">
+                                <Badge 
+                                    variant="outline" 
+                                    className="bg-stone-50 text-stone-500 border-stone-200"
+                                >
+                                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                                    Checking connection...
+                                </Badge>
+                            </div>
+                        ) : connectionStatus && connectionStatus !== "REJECTED" ? (
                             <div className="mt-2">
                                 <Badge 
                                     variant="outline" 
                                     className={`
                                         ${connectionStatus === 'PENDING' ? 'bg-amber-50 text-amber-700 border-amber-200' : ''}
                                         ${connectionStatus === 'ACCEPTED' ? 'bg-green-50 text-green-700 border-green-200' : ''}
-                                        ${connectionStatus === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-200' : ''}
                                     `}
                                 >
-                                    {connectionStatus === 'PENDING' && isIncomingRequest && 'Request Received'}
-                                    {connectionStatus === 'PENDING' && !isIncomingRequest && 'Request Sent'}
-                                    {connectionStatus === 'ACCEPTED' && 'Connected'}
-                                    {connectionStatus === 'REJECTED' && 'Rejected'}
+                                    {connectionStatus === 'PENDING' && isIncomingRequest && (
+                                        <>
+                                            <Clock className="h-3.5 w-3.5 mr-1.5" />
+                                            Request Received
+                                        </>
+                                    )}
+                                    {connectionStatus === 'PENDING' && !isIncomingRequest && (
+                                        <>
+                                            <Clock className="h-3.5 w-3.5 mr-1.5" />
+                                            Request Sent
+                                        </>
+                                    )}
+                                    {connectionStatus === 'ACCEPTED' && (
+                                        <>
+                                            <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
+                                            Connected
+                                        </>
+                                    )}
                                 </Badge>
                             </div>
-                        )}
+                        ) : null}
                     </div>
 
                     {/* CONNECTION BUTTON */}
                     {!isSelf && (
                         <div className="flex gap-3 pb-4">
-                            <Button
-                                variant={isPending || isAccepted ? "secondary" : "default"}
-                                size="lg"
-                                className={`
-                                    ${isPending ? "bg-stone-200 text-stone-600 hover:bg-stone-300" : ""}
-                                    ${isAccepted ? "bg-green-100 text-green-700 hover:bg-green-200" : ""}
-                                    ${!isPending && !isAccepted ? "bg-orange-500 hover:bg-orange-600 text-white" : ""}
-                                `}
-                                onClick={handleConnectClick}
-                                disabled={isLoading || isPending || isAccepted}
-                            >
-                                {isLoading ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                        Sending...
-                                    </>
-                                ) : isAccepted ? (
-                                    <>
-                                        <CheckCircle className="h-4 w-4 mr-2" />
-                                        Buddy
-                                    </>
-                                ) : isPending ? (
-                                    <>
-                                        <Clock className="h-4 w-4 mr-2" />
-                                        {isIncomingRequest ? 'Respond' : 'Requested'}
-                                    </>
-                                ) : (
-                                    <>
-                                        <UserPlus className="h-4 w-4 mr-2" />
-                                        Request Buddy
-                                    </>
-                                )}
-                            </Button>
+                            {renderConnectionButton()}
                         </div>
                     )}
                 </div>

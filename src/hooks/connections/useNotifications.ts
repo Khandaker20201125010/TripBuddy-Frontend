@@ -1,6 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/axios';
 import Swal from 'sweetalert2';
+import { connectionManager } from './connectionManager';
+
 
 // Define types for BOTH connection and trip requests
 export interface ConnectionRequest {
@@ -44,22 +47,31 @@ export const useNotifications = () => {
     setError(null);
 
     try {
+      console.log('Fetching notifications...');
+      
       // Fetch Connection Requests
       const connResponse = await api.get('/connections/incoming');
+      console.log('Connection response:', connResponse.data);
       
       if (connResponse.data.success) {
-        setConnectionRequests(connResponse.data.data || []);
+        const connections = connResponse.data.data || [];
+        console.log('Found connection requests:', connections.length);
+        setConnectionRequests(connections);
       }
 
       // Fetch Trip Requests
       const tripResponse = await api.get('/travelPlan/my-plans');
+      console.log('Trip plans response:', tripResponse.data);
       
       if (tripResponse.data.success && tripResponse.data.data) {
         const tripRequestsData: TripRequest[] = [];
         
         tripResponse.data.data.forEach((plan: any) => {
+          console.log('Plan:', plan.destination, 'has buddies:', plan.buddies?.length || 0);
+          
           if (plan.buddies && Array.isArray(plan.buddies)) {
             plan.buddies.forEach((buddy: any) => {
+              console.log('Buddy status:', buddy.status, 'ID:', buddy.id);
               if (buddy.status === "PENDING") {
                 tripRequestsData.push({
                   id: buddy.id,
@@ -83,11 +95,13 @@ export const useNotifications = () => {
           }
         });
         
+        console.log('Found trip requests:', tripRequestsData.length);
         setTripRequests(tripRequestsData);
       }
 
     } catch (error: any) {
-      setError('Failed to fetch notifications');
+      console.error('Error fetching notifications:', error);
+      setError('Failed to fetch notifications: ' + (error.message || 'Unknown error'));
       setConnectionRequests([]);
       setTripRequests([]);
     } finally {
@@ -107,10 +121,35 @@ export const useNotifications = () => {
   // Handle Connection Request
   const handleConnectionAction = async (connectionId: string, status: 'ACCEPTED' | 'REJECTED') => {
     try {
-      await api.patch(`/connections/respond/${connectionId}`, { status });
+      console.log(`Processing connection ${status}:`, connectionId);
       
+      const response = await api.patch(`/connections/respond/${connectionId}`, { status });
+      console.log('Connection action response:', response.data);
+      
+      // Remove from local state
       setConnectionRequests(prev => prev.filter(req => req.id !== connectionId));
       
+      // IMPORTANT: Notify connection manager for real-time updates
+      const connection = response.data.data;
+      if (connection) {
+        // Notify the sender that their request was responded to
+        connectionManager.notify(connection.senderId, {
+          userId: connection.receiverId,
+          status: status,
+          direction: 'sent',
+          connectionId: connection.id
+        });
+        
+        // Also notify the receiver (current user)
+        connectionManager.notify(connection.receiverId, {
+          userId: connection.senderId,
+          status: status,
+          direction: 'received',
+          connectionId: connection.id
+        });
+      }
+      
+      // Show success message
       Swal.fire({
         icon: 'success',
         title: status === 'ACCEPTED' ? 'Connection accepted!' : 'Request declined',
@@ -120,19 +159,38 @@ export const useNotifications = () => {
         timer: 3000
       });
       
+      // Refresh notifications after a delay
       setTimeout(() => fetchNotifications(), 1000);
+      
     } catch (error: any) {
-      Swal.fire('Error', 'Could not process connection request', 'error');
+      console.error('Connection action error:', error);
+      
+      // Show specific error message
+      const errorMessage = error.response?.data?.message || 
+                          error.message || 
+                          'Could not process connection request';
+      
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: errorMessage,
+        confirmButtonText: 'OK'
+      });
     }
   };
 
   // Handle Trip Request
   const handleTripAction = async (buddyId: string, status: 'APPROVED' | 'REJECTED') => {
     try {
-      await api.patch(`/travelPlan/request-status/${buddyId}`, { status });
+      console.log(`Processing trip ${status}:`, buddyId);
       
+      const response = await api.patch(`/travelPlan/request-status/${buddyId}`, { status });
+      console.log('Trip action response:', response.data);
+      
+      // Remove from local state
       setTripRequests(prev => prev.filter(req => req.id !== buddyId));
       
+      // Show success message
       Swal.fire({
         icon: 'success',
         title: `Request ${status.toLowerCase()} successfully`,
@@ -142,9 +200,23 @@ export const useNotifications = () => {
         timer: 3000
       });
       
+      // Refresh notifications after a delay
       setTimeout(() => fetchNotifications(), 1000);
+      
     } catch (error: any) {
-      Swal.fire('Error', 'Could not process trip request', 'error');
+      console.error('Trip action error:', error);
+      
+      // Show specific error message
+      const errorMessage = error.response?.data?.message || 
+                          error.message || 
+                          'Could not process trip request';
+      
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: errorMessage,
+        confirmButtonText: 'OK'
+      });
     }
   };
 

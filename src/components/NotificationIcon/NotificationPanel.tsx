@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
 
 import { motion, AnimatePresence } from 'framer-motion';
@@ -5,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { X, MapPin, Bell, Calendar, User, AlertCircle, RefreshCw } from 'lucide-react';
 import { useNotifications } from '@/hooks/connections/useNotifications';
+import { useEffect, useRef } from 'react';
 
 interface NotificationPanelProps {
   isOpen: boolean;
@@ -23,6 +25,8 @@ export default function NotificationPanel({ isOpen, onClose }: NotificationPanel
     totalNotifications
   } = useNotifications();
 
+  const panelRef = useRef<HTMLDivElement>(null);
+
   // Combine and sort all notifications
   const allNotifications = [
     ...connectionRequests.map(req => ({ 
@@ -39,6 +43,23 @@ export default function NotificationPanel({ isOpen, onClose }: NotificationPanel
     }))
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+  // Close panel when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
@@ -49,8 +70,7 @@ export default function NotificationPanel({ isOpen, onClose }: NotificationPanel
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[60]"
+            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[70]"
           />
         )}
       </AnimatePresence>
@@ -58,12 +78,14 @@ export default function NotificationPanel({ isOpen, onClose }: NotificationPanel
       <AnimatePresence>
         {isOpen && (
           <motion.div
+            ref={panelRef}
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed top-0 right-0 h-screen w-[85vw] md:w-96 bg-white shadow-2xl z-[70] flex flex-col border-l border-stone-200"
+            className="fixed top-0 right-0 h-screen w-[85vw] md:w-96 bg-white shadow-2xl z-[80] flex flex-col border-l border-stone-200"
           >
+            {/* Panel Header */}
             <div className="flex items-center justify-between p-5 border-b border-stone-100 bg-stone-50/50">
               <div className="flex items-center gap-2">
                 <Bell className="w-5 h-5 text-(--color-coral)" />
@@ -83,12 +105,16 @@ export default function NotificationPanel({ isOpen, onClose }: NotificationPanel
                 >
                   <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                 </button>
-                <button onClick={onClose} className="p-2 hover:bg-stone-200 rounded-full transition-colors">
+                <button 
+                  onClick={onClose}
+                  className="p-2 hover:bg-stone-200 rounded-full transition-colors"
+                >
                   <X className="w-5 h-5 text-stone-500" />
                 </button>
               </div>
             </div>
 
+            {/* Panel Content */}
             <div className="flex-1 overflow-y-auto p-4">
               {error && (
                 <div className="p-4 bg-red-50 border border-red-200 rounded-lg mb-4">
@@ -127,8 +153,10 @@ export default function NotificationPanel({ isOpen, onClose }: NotificationPanel
               {!loading && allNotifications.length > 0 && (
                 <div className="space-y-4">
                   {allNotifications.map((item) => (
-                    <div key={item.id} className="p-4 bg-white rounded-xl border border-stone-100 shadow-sm hover:shadow-md transition-all">
-                      
+                    <div 
+                      key={item.id} 
+                      className="p-4 bg-white rounded-xl border border-stone-100 shadow-sm hover:shadow-md transition-all"
+                    >
                       {/* Connection Request */}
                       {item.type === 'connection' && (
                         <>
@@ -245,6 +273,7 @@ export default function NotificationPanel({ isOpen, onClose }: NotificationPanel
               )}
             </div>
 
+            {/* Panel Footer */}
             {!loading && allNotifications.length > 0 && (
               <div className="p-4 border-t border-stone-100 bg-stone-50">
                 <p className="text-xs text-stone-500 text-center">

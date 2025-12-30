@@ -9,7 +9,6 @@ export interface PaginationMeta {
   totalItems: number;
 }
 
-// Added sortBy param
 export const useMatchedTravelPlans = (
   filters: Record<string, any>, 
   page: number = 1, 
@@ -30,9 +29,18 @@ export const useMatchedTravelPlans = (
     const fetchPlans = async () => {
       setLoading(true);
       try {
+        // 1. CLEAN THE FILTERS: Remove empty strings, nulls, or undefined values
+        const cleanFilters = Object.fromEntries(
+          Object.entries(filters).filter(([_, v]) => v != null && v !== "")
+        );
+
         const res = await api.get("/travelPlan/match", {
-          // Pass sortBy in params
-          params: { ...filters, page, limit, sortBy },
+          params: { 
+            ...cleanFilters, // Send cleaned filters
+            page, 
+            limit, 
+            sortBy 
+          },
         });
 
         if (isMounted) {
@@ -59,7 +67,7 @@ export const useMatchedTravelPlans = (
     fetchPlans();
 
     return () => { isMounted = false; };
-  }, [filters, page, limit, sortBy]); // Add sortBy to dependency array
+  }, [filters, page, limit, sortBy]); 
 
   return { data, loading, pagination };
 };

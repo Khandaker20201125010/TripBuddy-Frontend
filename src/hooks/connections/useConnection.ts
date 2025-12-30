@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
 
-
 export const useConnection = () => {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -20,14 +19,12 @@ export const useConnection = () => {
       const result = await response.json();
 
       if (!response.ok) {
-        // We throw the result so the component catch block gets the message and status
-        throw result; 
+        throw result;
       }
 
       return result.data;
     } catch (error: any) {
-      // Re-throw so TravelerCard can see if it's a 403 Forbidden
-      throw error; 
+      throw error;
     } finally {
       setIsLoading(false);
     }
