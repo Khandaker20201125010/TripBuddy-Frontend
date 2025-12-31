@@ -5,7 +5,13 @@ import { useEffect, useState, useCallback } from "react";
 import api from "@/lib/axios";
 import AdminProfile from "@/components/AdminDashBoardComponents/AdminProfile";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Metadata } from "next";
 
+export const metadata :Metadata = {
+   title: "Admin Profile | TravelBuddy",
+    description: "View and manage your profile with ease!",
+  
+}
 export default function AdminProfilePage() {
   const { data: session } = useSession();
   const [profile, setProfile] = useState(null);

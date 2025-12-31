@@ -1,6 +1,12 @@
 import LoginForm from '@/components/auth-form/LoginForm';
 import Image from 'next/image';
 import loginsinup from "../../../../public/images/loginsinup.png";
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+    title: "Login | TravelBuddy",
+    description: "Login to your account and start planning your next adventure!",
+}
 
 const LoginPage = async ({
     searchParams,
@@ -11,7 +17,7 @@ const LoginPage = async ({
 
     return (
         <div className="min-h-screen flex flex-col md:flex-row">
-                  {/* Left side full-screen image */}
+            {/* Left side full-screen image */}
             <div className="flex w-full md:w-1/2 items-center justify-center bg-gray-50 p-8">
                 <div className="w-full max-w-md bg-white rounded-xl shadow-xl p-8">
                     <h1 className="text-3xl font-bold mb-6 text-center text-gray-800">
@@ -21,6 +27,7 @@ const LoginPage = async ({
                         Enter your credentials to explore amazing travel experiences
                     </p>
 
+                    {/* Pass the redirect parameter to LoginForm */}
                     <LoginForm redirect={params.redirect} />
 
                     <p className="text-center text-gray-500 mt-6">
@@ -37,15 +44,11 @@ const LoginPage = async ({
                     src={loginsinup}
                     alt="Login Illustration"
                     fill
-                    /* 3. Added block and h-full to the image classes */
                     className="object-cover block w-full h-full"
                     priority
                     sizes="(max-width: 768px) 100vw, 50vw"
                 />
             </div>
-
-       
-
         </div>
     );
 };

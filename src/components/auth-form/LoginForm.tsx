@@ -11,7 +11,12 @@ import { FcGoogle } from 'react-icons/fc';
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 
-const LoginForm = () => {
+// Add interface for props
+interface LoginFormProps {
+  redirect?: string;
+}
+
+const LoginForm: React.FC<LoginFormProps> = ({ redirect }) => {
   const searchParams = useSearchParams();
   const [isPending, setIsPending] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -72,9 +77,10 @@ const LoginForm = () => {
 
     setIsPending(true);
 
+    // Use the redirect prop if provided, otherwise use searchParams
+    const rawRedirect = redirect || searchParams.get("redirect") || "/";
     // Decode the URL properly and ensure it starts with a slash to stay on-site
-    const rawRedirect = searchParams.get("redirect");
-    const targetRedirect = rawRedirect ? decodeURIComponent(rawRedirect) : "/";
+    const targetRedirect = rawRedirect.startsWith("/") ? rawRedirect : `/${rawRedirect}`;
 
     try {
       const result = await signIn("credentials", {

@@ -1,7 +1,13 @@
 import RegisterForm from '@/components/auth-form/RegisterForm';
 import Image from 'next/image';
 import loginsinup from "../../../../public/images/loginsinup.png";
+import { Metadata } from 'next';
 
+
+export const metadata :Metadata= {
+    title: "Register | TravelBuddy",
+    description: "Register to your account and start planning your next adventure!",
+}
 const RegisterPage = async ({
     searchParams,
 }: {
