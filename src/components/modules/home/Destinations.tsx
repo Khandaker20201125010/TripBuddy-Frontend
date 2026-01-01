@@ -1,7 +1,7 @@
 'use client'
 import React, { useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
-import { UsersIcon, TrendingUpIcon, MapPinIcon, CalendarIcon } from 'lucide-react'
+import { UsersIcon,  MapPinIcon, CalendarIcon } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useAllTravelPlans } from '@/hooks/travelshooks/useAllTravelPlans'

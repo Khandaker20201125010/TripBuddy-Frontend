@@ -141,20 +141,16 @@ const RegisterForm = () => {
         });
         return false;
       } else {
-        // Login successful, now get the user's role to redirect properly
+        // Login successful - force a complete refresh to update session
         Swal.fire({
           title: "Welcome!",
           text: "Your account has been created and you are now logged in.",
           icon: "success",
-          timer: 1500,
+          timer: 1000,
           showConfirmButton: false,
         }).then(() => {
-          // Check if session is available and redirect based on role
-          if (session?.user?.role === "ADMIN") {
-            router.push("/adminDashboard");
-          } else {
-            router.push("/");
-          }
+          // Force a hard page refresh to update all session data
+          window.location.href = "/";
         });
         return true;
       }
@@ -182,11 +178,9 @@ const RegisterForm = () => {
       // Use setTimeout to ensure state is fully updated
       setTimeout(async () => {
         const success = await attemptAutoLogin(state.email, state.password);
-        if (success) {
-          // Force a page refresh to update navbar and session state
-          setTimeout(() => {
-            window.location.reload();
-          }, 1000);
+        if (!success) {
+          // Reset if failed
+          autoLoginAttempted.current = false;
         }
       }, 100);
     }
@@ -221,8 +215,8 @@ const RegisterForm = () => {
         if (success) {
           // Force a page refresh to update navbar
           setTimeout(() => {
-            window.location.reload();
-          }, 1000);
+            window.location.href = "/";
+          }, 100);
         }
       }, 100);
     } else {

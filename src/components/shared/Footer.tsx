@@ -9,6 +9,7 @@ import {
   InstagramIcon,
   FacebookIcon,
 } from 'lucide-react'
+import Link from 'next/link'
 
 const footerLinks = {
   Product: ['Features', 'Pricing', 'Destinations', 'Mobile App', 'Safety'],
@@ -36,11 +37,11 @@ export function Footer() {
   })
 
   return (
-    <footer ref={ref} className="bg-(--color-charcoal) text-white max-w-[1440px] mx-auto">
+    <footer ref={ref} className="bg-linear-to-b from-stone-900 via-stone-800 to-stone-900 text-stone-100 max-w-[1440px] mx-auto">
       
       {/* CTA Section */}
-      <div className="border-b border-white/10">
-        <div className="w-full mx-auto px-6 py-20">
+      <div className="border-b border-orange-800/20">
+        <div className="w-full mx-auto px-6 py-20 bg-linear-to-r from-stone-800/50 to-stone-900/50">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={isInView ? { opacity: 1, y: 0 } : {}}
@@ -58,20 +59,19 @@ export function Footer() {
             </p>
 
             <div className="flex flex-wrap justify-center gap-4">
+             <Link href="/register">
               <button className="px-8 py-4 gradient-sunset text-white font-semibold rounded-full shadow-lg shadow-(--color-coral)/30 hover:shadow-xl hover:shadow-(--color-coral)/40 transition-all duration-300">
                 Start Your Journey Free
               </button>
+             </Link>
 
-              <button className="px-8 py-4 bg-white/10 text-white font-semibold rounded-full border border-white/20 hover:bg-white/20 transition-colors">
-                Watch Demo
-              </button>
             </div>
           </motion.div>
         </div>
       </div>
 
       {/* Links Section */}
-      <div className="max-w-7xl mx-auto px-6 py-16">
+      <div className="max-w-full mx-auto px-6 py-16  bg-stone-900">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
 
           {/* Brand */}
@@ -137,13 +137,13 @@ export function Footer() {
       </div>
 
       {/* Bottom Bar */}
-      <div className="border-t border-white/10">
+      <div className="border-t border-orange-800/20 bg-stone-950">
         <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-white/40 text-sm">
-            © 2024 TravelBuddy. All rights reserved.
+            © {new Date().getFullYear()}  TravelBuddy. All rights reserved.
           </p>
 
-          <div className="flex items-center gap-2 text-white/60 text-sm">
+          <div className="flex items-center gap-2 text-stone-400 text-sm">
             <MailIcon className="w-4 h-4" />
             <span>hello@travelbuddy.com</span>
           </div>

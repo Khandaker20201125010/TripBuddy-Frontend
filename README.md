@@ -1,36 +1,101 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🧳 Travel Buddy – Frontend
 
-## Getting Started
+A modern social-travel web platform that helps travelers find compatible travel buddies, share travel plans, and connect with like-minded explorers. This frontend application delivers a smooth, secure, and engaging user experience for discovering and planning shared journeys.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 🌍 Project Overview
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+**Travel Buddy & Meetup** is a subscription-based travel networking platform where users can:
+- Create detailed travel profiles
+- Share upcoming travel plans
+- Discover and match with travelers heading to similar destinations
+- Leave reviews after completed trips
+- Access premium features through secure payment integration
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+This repository contains the **frontend** of the application, built with modern web technologies and best UI/UX practices.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 🔗 Live Links
+- **Frontend:** [tripbuddy-frontend.vercel.app](https://tripbuddy-frontend.vercel.app/)
 
-To learn more about Next.js, take a look at the following resources:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 🛠️ Tech Stack
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Framework:** Next.js (App Router)
+- **Language:** JavaScript / TypeScript
+- **UI Library:** React
+- **Styling:** Tailwind CSS
+- **State Management:** Context API 
+- **Forms:** React Hook Form /Custom Form
+- **Authentication:** JWT (via backend)
+- **Payments:** Stripe
+- **Image Upload:** Cloudinary / ImgBB
+- **UI Enhancements:**  SweetAlert2
+- **Deployment:** Vercel 
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## ✨ Core Features
+
+### 🔐 Authentication & Roles
+- Email & password login / registration
+- Role-based access (User & Admin)
+- Secure session handling using JWT
+
+### 👤 User Profile Management
+- Create & edit travel profiles
+- Upload profile image
+- Add bio, interests, visited countries, and location
+- Public profile viewing
+
+### ✈️ Travel Plan Management
+- Create, edit, and delete travel plans
+- Add destination, date range, budget, and travel type
+- View plan details and host profile
+
+### 🔍 Search & Matching
+- Search travelers by destination, date, and travel type
+- Explore matched travel buddies dynamically
+
+### ⭐ Reviews & Ratings
+- Leave reviews after trip completion
+- Edit or delete own reviews
+- View average ratings on profiles
+- After Travel got pasted joined travel will get review notification automatically and can review by going to plan details page . 
+
+### 💳 Subscription & Payments
+- weekly /Monthly / yearly subscription plans
+- Verified badge for premium users
+- Secure payment flow via integrated gateway
+
+### 🧑‍💼 Admin Dashboard
+- Manage users
+- Manage travel plans
+- Platform overview and controls
+
+---
+
+## 📄 Pages & Routes
+
+| Route | Description |
+|------|------------|
+| `/` | Home / Landing page |
+| `/login` | User login |
+| `/register` | User registration |
+| `/explore` | Search & match travelers |
+| `/profile/[id]` | Public user profile |
+| `/dashboard/profile` | User 
+| `/adminDashboard/adminProfile` | Admin
+| `/travel-plans` | User travel plans |
+| `/travel-plans/add` | Add new travel plan |
+| `/travel-plans/[id]` | Travel plan details |
+
+
+
+
+

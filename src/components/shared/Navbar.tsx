@@ -3,17 +3,17 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bell, MapPin, Menu, X, Shield, User, Settings, LogOut, LayoutDashboard } from 'lucide-react'
+import { Bell, MapPin, Menu, X, Shield, LogOut, LayoutDashboard } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
-import Image from 'next/image'
 
 import { Button } from '../ui/button'
 import { setCookie, deleteCookie } from '@/services/auth/tokenHandlers'
-
 import { useNotifications } from '@/hooks/connections/useNotifications'
 import NotificationPanel from '../NotificationIcon/NotificationPanel'
+import { NavbarAvatar } from '../ui/NavbarAvatar'
+
 
 const loggedOutNavLinks = [
   { name: 'Home', href: '/' },
@@ -113,36 +113,6 @@ export function Navbar() {
     }
     return pathname.startsWith(href)
   }
-
-  // Get user avatar or placeholder (only for desktop)
-  const getUserAvatar = (size: 'sm' | 'md' = 'md') => {
-    const avatarSize = size === 'sm' ? 24 : 32;
-    
-    if (session?.user?.image) {
-      return (
-        <Image
-          src={session.user.image}
-          alt={session.user.name || 'User'}
-          width={avatarSize}
-          height={avatarSize}
-          className="rounded-full object-cover"
-        />
-      );
-    }
-    
-    // Fallback to initials
-    const initials = session?.user?.name
-      ? session.user.name.split(' ').map(n => n[0]).join('').toUpperCase()
-      : 'U';
-    
-    return (
-      <div 
-        className={`${size === 'sm' ? 'w-6 h-6 text-xs' : 'w-8 h-8 text-sm'} rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium`}
-      >
-        {initials}
-      </div>
-    );
-  };
 
   // User menu items for dropdown (desktop only)
   const userMenuItems = [
@@ -258,7 +228,11 @@ export function Navbar() {
                     onClick={() => setShowUserMenu(!showUserMenu)}
                     className="flex items-center gap-2 p-1 rounded-full hover:bg-stone-100 transition-colors"
                   >
-                    {getUserAvatar('md')}
+                    <NavbarAvatar 
+                      src={session?.user?.image} 
+                      name={session?.user?.name} 
+                      size="md" 
+                    />
                     <div className="text-left hidden lg:block">
                       <p className="text-sm font-medium text-(--color-charcoal) truncate max-w-[120px]">
                         {session?.user?.name || 'User'}
@@ -283,7 +257,11 @@ export function Navbar() {
                         {/* User Info Section */}
                         <div className="px-4 py-3 border-b border-stone-100">
                           <div className="flex items-center gap-3">
-                            {getUserAvatar('md')}
+                            <NavbarAvatar 
+                              src={session?.user?.image} 
+                              name={session?.user?.name} 
+                              size="md" 
+                            />
                             <div>
                               <p className="font-medium text-(--color-charcoal)">
                                 {session?.user?.name || 'User'}
@@ -428,12 +406,11 @@ export function Navbar() {
                       <div className="px-4 py-3 mb-2 bg-stone-50 rounded-lg">
                         <div className="flex items-center gap-3">
                           {/* Show small avatar in mobile menu */}
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium text-sm">
-                            {session?.user?.name 
-                              ? session.user.name.split(' ').map(n => n[0]).join('').toUpperCase()
-                              : 'U'
-                            }
-                          </div>
+                          <NavbarAvatar 
+                            src={session?.user?.image} 
+                            name={session?.user?.name} 
+                            size="sm" 
+                          />
                           <div>
                             <p className="font-medium text-(--color-charcoal)">
                               {session?.user?.name || 'User'}

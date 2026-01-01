@@ -16,10 +16,10 @@ export default function GlobalReviewPopup() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    // 2. Define the async function INSIDE the effect.
-    // This allows the linter to see the scope clearly and avoids external dependencies.
     const checkPendingReviews = async () => {
-      if (!session?.user) return;
+      // FIXED: Added check to ensure user exists AND is not an ADMIN
+      const user = session?.user as any;
+      if (!user || user.role === 'ADMIN') return;
 
       try {
         const res = await api.get("/review/pending");
@@ -56,8 +56,6 @@ export default function GlobalReviewPopup() {
   const handleSuccess = () => {
     setIsOpen(false);
     setPendingPlan(null);
-    
-
     setRefreshKey(prev => prev + 1); 
   };
 

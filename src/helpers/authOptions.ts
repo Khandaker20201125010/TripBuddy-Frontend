@@ -25,6 +25,7 @@ async function refreshAccessToken(token: JWT) {
       accessToken: refreshedTokens.data.accessToken,
       refreshToken: refreshedTokens.data.refreshToken ?? token.refreshToken,
       accessTokenExpires: Date.now() + 60 * 60 * 1000 - 60000,
+      image: refreshedTokens.data.user?.profileImage || token.image, // Preserve image during refresh
     };
   } catch (error) {
     console.error("RefreshAccessTokenError", error);
@@ -76,6 +77,7 @@ export const authOptions: NextAuthOptions = {
               role: result.data.user.role,
               premium: result.data.user.premium,
               subscriptionType: result.data.user.subscriptionType,
+              image: result.data.user.profileImage, // CRITICAL: Add this line
               accessToken: result.data.accessToken,
               refreshToken: result.data.refreshToken,
             };
@@ -125,6 +127,7 @@ export const authOptions: NextAuthOptions = {
                 role: result.data.user.role,
                 premium: result.data.user.premium,
                 subscriptionType: result.data.user.subscriptionType,
+                image: result.data.user.profileImage, // Get image from backend
                 accessToken: result.data.accessToken,
                 refreshToken: result.data.refreshToken,
                 accessTokenExpires: Date.now() + expiresIn,
@@ -145,6 +148,7 @@ export const authOptions: NextAuthOptions = {
           role: user.role,
           premium: user.premium,
           subscriptionType: user.subscriptionType,
+          image: (user as any).image, // CRITICAL: Pass image from authorize
           accessToken: (user as any).accessToken,
           refreshToken: (user as any).refreshToken,
           accessTokenExpires: Date.now() + expiresIn,
@@ -165,6 +169,7 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role;
         session.user.premium = token.premium;
         session.user.subscriptionType = token.subscriptionType;
+        session.user.image = token.image; // CRITICAL: Pass image to session
         session.accessToken = token.accessToken;
         session.error = token.error;
       }

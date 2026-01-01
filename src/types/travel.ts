@@ -5,7 +5,7 @@ export interface TravelPlan {
   id: string;
   userId: string;
   destination: string;
-  image?: string;
+  image?: string | null;
   startDate: string;
   endDate: string;
   budget: number;
@@ -26,7 +26,7 @@ export interface TravelPlanFormData {
   travelType: string;
   description?: string;
   visibility?: boolean;
-  image?: File; 
+  image?: File | string | null;
 }
 export interface Traveler {
   id: string;

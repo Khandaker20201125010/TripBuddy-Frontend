@@ -17,31 +17,42 @@ export default function FindTravelBuddyComponents() {
   const [filters, setFilters] = useState<any>({});
   const [page, setPage] = useState(1);
   const [sortOption, setSortOption] = useState("Best Match");
-  
+  const [itemsPerPage, setItemsPerPage] = useState(4); // Changed from 6 to 4
+
   const { stats, loading: statsLoading } = useTravelStats();
-  const { data, loading, pagination } = useMatchedTravelPlans(filters, page, 6, sortOption);
+  const { data, loading, pagination } = useMatchedTravelPlans(filters, page, itemsPerPage, sortOption);
 
   // Normal updates merge state
   const handleFilterChange = (newFilters: any) => {
     setFilters((prev: any) => ({ ...prev, ...newFilters }));
-    setPage(1); 
+    setPage(1);
   };
 
-  // ✅ FIX: Clear function explicitly replaces state with an empty object
+  // Clear function explicitly replaces state with an empty object
   const clearAllFilters = () => {
     setFilters({});
     setPage(1);
   };
 
+  // Handle items per page change
+  const handleItemsPerPageChange = (value: number) => {
+    setItemsPerPage(value);
+    setPage(1); // Reset to first page when changing items per page
+  };
+
   const totalResults = pagination?.totalItems || 0;
-  const activeFiltersCount = Object.keys(filters).filter(key => 
+  const activeFiltersCount = Object.keys(filters).filter(key =>
     filters[key] !== undefined && filters[key] !== ''
   ).length;
+
+  // Calculate showing range
+  const showingStart = totalResults > 0 ? (page - 1) * itemsPerPage + 1 : 0;
+  const showingEnd = Math.min(page * itemsPerPage, totalResults);
 
   return (
     <div className="min-h-screen bg-linear-to-br from-stone-50 via-white to-orange-50/30">
       <div className="container mx-auto px-4 py-8 md:py-12">
-        
+
         {/* Header with Stats */}
         <div className="relative max-w-4xl mx-auto mb-10 md:mb-14">
           <div className="absolute top-0 left-0 w-1/2 h-full opacity-30">
@@ -58,7 +69,7 @@ export default function FindTravelBuddyComponents() {
                 Match & Travel
               </Badge>
             </div>
-            
+
             <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">
               Find Your Perfect{" "}
               <span className="relative inline-block">
@@ -68,7 +79,7 @@ export default function FindTravelBuddyComponents() {
                 <span className="absolute bottom-0 left-0 w-full h-2 bg-orange-200/50 -rotate-1"></span>
               </span>
             </h1>
-            
+
             <p className="text-lg text-stone-600 max-w-2xl mx-auto leading-relaxed">
               Connect with travelers who share your destination, dates, and travel style.
               Adventure awaits with the perfect companion.
@@ -80,9 +91,9 @@ export default function FindTravelBuddyComponents() {
               <Plane className="h-4 w-4 text-orange-500" />
               <span className="text-sm font-medium text-stone-700">
                 {statsLoading ? (
-                   <span className="inline-block w-8 h-4 bg-stone-100 animate-pulse rounded mr-1 align-middle"/>
+                  <span className="inline-block w-8 h-4 bg-stone-100 animate-pulse rounded mr-1 align-middle" />
                 ) : (
-                   <span className="font-bold text-orange-600">{stats?.travelers || 0}</span>
+                  <span className="font-bold text-orange-600">{stats?.travelers || 0}</span>
                 )}
                 {" "} Travelers
               </span>
@@ -91,9 +102,9 @@ export default function FindTravelBuddyComponents() {
               <MapPin className="h-4 w-4 text-orange-500" />
               <span className="text-sm font-medium text-stone-700">
                 {statsLoading ? (
-                   <span className="inline-block w-8 h-4 bg-stone-100 animate-pulse rounded mr-1 align-middle"/>
+                  <span className="inline-block w-8 h-4 bg-stone-100 animate-pulse rounded mr-1 align-middle" />
                 ) : (
-                   <span className="font-bold text-orange-600">{stats?.destinations || 0}+</span>
+                  <span className="font-bold text-orange-600">{stats?.destinations || 0}+</span>
                 )}
                 {" "} Destinations
               </span>
@@ -101,10 +112,10 @@ export default function FindTravelBuddyComponents() {
             <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full border border-stone-200 shadow-sm min-w-[150px]">
               <Calendar className="h-4 w-4 text-orange-500" />
               <span className="text-sm font-medium text-stone-700">
-                 {statsLoading ? (
-                   <span className="inline-block w-8 h-4 bg-stone-100 animate-pulse rounded mr-1 align-middle"/>
+                {statsLoading ? (
+                  <span className="inline-block w-8 h-4 bg-stone-100 animate-pulse rounded mr-1 align-middle" />
                 ) : (
-                   <span className="font-bold text-orange-600">{stats?.tripsThisYear || 0}</span>
+                  <span className="font-bold text-orange-600">{stats?.tripsThisYear || 0}</span>
                 )}
                 {" "} Trips ({new Date().getFullYear()})
               </span>
@@ -122,18 +133,31 @@ export default function FindTravelBuddyComponents() {
                   Use filters to narrow down your perfect travel companion
                 </p>
               </div>
-              {activeFiltersCount > 0 && (
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={clearAllFilters} // ✅ FIX: Use clear function
-                  className="text-sm text-stone-500 hover:text-stone-700"
-                >
-                  Clear all filters ({activeFiltersCount})
-                </Button>
-              )}
+              <div className="flex items-center gap-3">
+                {activeFiltersCount > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearAllFilters}
+                    className="text-sm text-stone-500 hover:text-stone-700"
+                  >
+                    Clear all filters ({activeFiltersCount})
+                  </Button>
+                )}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-stone-500">Show:</span>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+                    className="text-sm border border-stone-200 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-orange-500 bg-white"
+                  >
+                    <option value={4}>4</option>
+                    <option value={6}>6</option>
+                    <option value={12}>12</option>
+                  </select>
+                </div>
+              </div>
             </div>
-            {/* ✅ FIX: key prop forces the filter UI to reset when filters are cleared */}
             <BuddyFilters key={activeFiltersCount === 0 ? 'reset' : 'active'} onChange={handleFilterChange} />
           </div>
         </div>
@@ -145,20 +169,25 @@ export default function FindTravelBuddyComponents() {
                 <div>
                   <h3 className="text-xl font-semibold text-stone-800">Matched Travelers</h3>
                   <p className="text-sm text-stone-500">
-                    Showing {data?.length || 0} of {totalResults} results
+                    Showing {showingStart}-{showingEnd} of {totalResults} results
                   </p>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-stone-500">Sort by:</span>
-                  <select 
+                  <select
                     value={sortOption}
-                    onChange={(e) => setSortOption(e.target.value)}
+                    onChange={(e) => {
+                      setSortOption(e.target.value);
+                      setPage(1);
+                    }}
                     className="text-sm border border-stone-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-100 bg-white cursor-pointer"
                   >
                     <option value="Best Match">Best Match</option>
                     <option value="Date">Date (Soonest)</option>
                     <option value="Destination">Destination (A-Z)</option>
+                    <option value="Budget">Budget (Low to High)</option>
+                    <option value="Popularity">Most Popular</option>
                   </select>
                 </div>
               </div>
@@ -178,35 +207,14 @@ export default function FindTravelBuddyComponents() {
                     </div>
                   ))}
                 </div>
-              ) : data && data.length > 0 ? (
-                <div className="space-y-6">
-                  <MatchedTravelGrid 
-                    plans={data} 
-                    pagination={pagination}
-                    onPageChange={setPage}
-                  />
-                </div>
               ) : (
-                <div className="bg-white rounded-2xl border border-stone-200 p-12 text-center">
-                  <div className="max-w-md mx-auto">
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-orange-100 flex items-center justify-center">
-                      <Users className="h-8 w-8 text-orange-500" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-stone-800 mb-2">
-                      No Updated matches found
-                    </h3>
-                    <p className="text-stone-500 mb-6">
-                      Try adjusting your filters to find more travel buddies
-                    </p>
-                    <Button 
-                      variant="outline"
-                      onClick={clearAllFilters} // ✅ FIX: Applied here too
-                      className="border-orange-200 text-orange-600 hover:bg-orange-50"
-                    >
-                      Clear all filters
-                    </Button>
-                  </div>
-                </div>
+                <MatchedTravelGrid
+                  plans={data}
+                  pagination={pagination}
+                  onPageChange={setPage}
+                  itemsPerPage={itemsPerPage}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                />
               )}
             </div>
 
@@ -241,23 +249,23 @@ export default function FindTravelBuddyComponents() {
                 </div>
                 <div className="space-y-3">
                   {statsLoading ? (
-                     [1,2,3,4].map(i => (
-                        <div key={i} className="flex justify-between p-2">
-                           <Skeleton className="h-4 w-24"/>
-                           <Skeleton className="h-4 w-8"/>
-                        </div>
-                     ))
+                    [1, 2, 3, 4].map(i => (
+                      <div key={i} className="flex justify-between p-2">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-4 w-8" />
+                      </div>
+                    ))
                   ) : stats?.trending && stats.trending.length > 0 ? (
                     stats.trending.map((item, index) => (
-                      <div 
-                        key={index} 
-                        className="flex items-center justify-between p-3 rounded-lg hover:bg-stone-50 cursor-pointer transition-colors"
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-3 rounded-lg hover:bg-stone-50 cursor-pointer transition-colors group"
                         onClick={() => handleFilterChange({ destination: item.destination })}
                       >
-                        <span className="text-sm text-stone-700 font-medium capitalize truncate max-w-[140px]">
+                        <span className="text-sm text-stone-700 font-medium capitalize truncate max-w-[140px] group-hover:text-orange-600">
                           {item.destination}
                         </span>
-                        <Badge variant="secondary" className="text-xs shrink-0">
+                        <Badge variant="secondary" className="text-xs shrink-0 bg-orange-50 text-orange-700 border-orange-200">
                           {item.count} travelers
                         </Badge>
                       </div>
@@ -283,10 +291,22 @@ export default function FindTravelBuddyComponents() {
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/my-travel-plans">
-              <Button size="lg" variant="gradient">
+              <Button size="lg" variant="gradient" className="shadow-md shadow-orange-200 hover:shadow-lg">
                 Share Your Trip
               </Button>
             </Link>
+            <Button
+              size="lg"
+              variant="outline"
+              className="border-orange-300 text-orange-600 hover:bg-orange-50"
+              onClick={() => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                setFilters({});
+                setPage(1);
+              }}
+            >
+              Reset Search
+            </Button>
           </div>
         </div>
       </div>

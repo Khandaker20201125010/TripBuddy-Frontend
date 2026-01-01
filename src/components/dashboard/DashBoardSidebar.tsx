@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { 
   LayoutDashboard, Users, Map, Settings, 
   LogOut, ChevronLeft, ChevronRight, ShieldCheck, 
@@ -20,6 +20,9 @@ export function DashBoardSidebar({ className, onLinkClick }: SidebarProps) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const [isCollapsed, setIsCollapsed] = useState(false);
+    const router = useRouter(); // Add router for navigation
+  
+  
 
   const role = session?.user?.role;
 
@@ -36,6 +39,23 @@ export function DashBoardSidebar({ className, onLinkClick }: SidebarProps) {
   ];
 
   const displayedItems = role === "ADMIN" ? adminMenuItems : userMenuItems;
+
+    const handleLogout = async () => {
+      try {
+        // Sign out and redirect to login page
+        await signOut({ 
+          callbackUrl: "/login",
+          redirect: true // This ensures NextAuth handles the redirect
+        });
+        
+        // Optional: Force a hard redirect if needed
+        // window.location.href = "/login";
+      } catch (error) {
+        console.error("Logout error:", error);
+        // Fallback redirect
+        router.push("/login");
+      }
+    };
 
   return (
     <div 
@@ -108,7 +128,7 @@ export function DashBoardSidebar({ className, onLinkClick }: SidebarProps) {
         {/* Logout Section */}
         <div className="mt-auto pt-4 border-t">
           <Button 
-            onClick={() => signOut()}
+            onClick={handleLogout} 
             variant="ghost" 
             className={cn(
               "w-full justify-start gap-3 px-3 text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors",

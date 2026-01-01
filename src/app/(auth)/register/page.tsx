@@ -9,11 +9,11 @@ export const metadata :Metadata= {
     description: "Register to your account and start planning your next adventure!",
 }
 const RegisterPage = async ({
-    searchParams,
+   
 }: {
     searchParams?: Promise<{ redirect?: string }>;
 }) => {
-    const params = (await searchParams) || {};
+   
 
     return (
         <div className="min-h-screen flex flex-col md:flex-row">
