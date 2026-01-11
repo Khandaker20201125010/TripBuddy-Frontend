@@ -105,7 +105,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
               </Avatar>
             ) : (
               <Image
-                src={getImageSrc(profile.profileImage || "/placeholder-user.png")}
+                src={getImageSrc(profile.profileImage || "/images/userProfile.jpg")}
                 alt={profile.name}
                 fill
                 className="object-cover"

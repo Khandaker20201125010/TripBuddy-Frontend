@@ -1,3 +1,4 @@
+// app/api/auth/[...nextauth]/route.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
@@ -6,13 +7,16 @@ import { JWT } from "next-auth/jwt";
 
 async function refreshAccessToken(token: JWT) {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/refresh-token`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token.refreshToken}`,
-      },
-    });
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh-token`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token.refreshToken}`,
+        },
+      }
+    );
 
     const refreshedTokens = await response.json();
 
@@ -25,7 +29,8 @@ async function refreshAccessToken(token: JWT) {
       accessToken: refreshedTokens.data.accessToken,
       refreshToken: refreshedTokens.data.refreshToken ?? token.refreshToken,
       accessTokenExpires: Date.now() + 60 * 60 * 1000 - 60000,
-      image: refreshedTokens.data.user?.profileImage || token.image, // Preserve image during refresh
+      image: refreshedTokens.data.user?.profileImage || token.image,
+      picture: refreshedTokens.data.user?.profileImage || token.picture || token.image,
     };
   } catch (error) {
     console.error("RefreshAccessTokenError", error);
@@ -33,6 +38,39 @@ async function refreshAccessToken(token: JWT) {
       ...token,
       error: "RefreshAccessTokenError",
     };
+  }
+}
+
+// ADD THIS FUNCTION TO UPDATE USER DATA
+async function updateUserData(token: JWT) {
+  try {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/user/${token.id}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token.accessToken}`,
+        },
+      }
+    );
+
+    const result = await response.json();
+
+    if (response.ok && result.data) {
+      return {
+        ...token,
+        image: result.data.profileImage,
+        picture: result.data.profileImage,
+        name: result.data.name,
+        premium: result.data.premium,
+        subscriptionType: result.data.subscriptionType,
+      };
+    }
+    return token;
+  } catch (error) {
+    console.error("Failed to update user data:", error);
+    return token;
   }
 }
 
@@ -62,7 +100,7 @@ export const authOptions: NextAuthOptions = {
               body: JSON.stringify(credentials),
             }
           );
-          
+
           const result = await res.json();
 
           if (!res.ok) {
@@ -77,31 +115,41 @@ export const authOptions: NextAuthOptions = {
               role: result.data.user.role,
               premium: result.data.user.premium,
               subscriptionType: result.data.user.subscriptionType,
-              image: result.data.user.profileImage, // CRITICAL: Add this line
+              image: result.data.user.profileImage,
+              picture: result.data.user.profileImage, // Ensure picture is set
               accessToken: result.data.accessToken,
               refreshToken: result.data.refreshToken,
             };
           }
-          
+
           return null;
         } catch (error: any) {
           console.error("Authorize error:", error);
-          
           if (error.message.includes("Network")) {
             throw new Error("Network error. Please check your connection.");
           }
-          
           throw new Error(error.message || "Login failed. Please try again.");
         }
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger, session }) {
+      // NEW: Handle session update when profile is edited
+      if (trigger === "update") {
+        // Update token with new session data
+        return {
+          ...token,
+          ...session.user,
+          image: session.user.image || token.image,
+          picture: session.user.image || token.picture,
+        };
+      }
+
       // 1. Initial Login
       if (account && user) {
         const expiresIn = 60 * 60 * 1000;
-        
+
         // Handle Google Login Sync
         if (account.provider === "google") {
           try {
@@ -117,9 +165,9 @@ export const authOptions: NextAuthOptions = {
                 }),
               }
             );
-            
+
             const result = await res.json();
-            
+
             if (res.ok && result.data) {
               return {
                 ...token,
@@ -127,7 +175,8 @@ export const authOptions: NextAuthOptions = {
                 role: result.data.user.role,
                 premium: result.data.user.premium,
                 subscriptionType: result.data.user.subscriptionType,
-                image: result.data.user.profileImage, // Get image from backend
+                image: result.data.user.profileImage,
+                picture: result.data.user.profileImage || token.picture,
                 accessToken: result.data.accessToken,
                 refreshToken: result.data.refreshToken,
                 accessTokenExpires: Date.now() + expiresIn,
@@ -148,20 +197,38 @@ export const authOptions: NextAuthOptions = {
           role: user.role,
           premium: user.premium,
           subscriptionType: user.subscriptionType,
-          image: (user as any).image, // CRITICAL: Pass image from authorize
+          image: (user as any).image,
+          picture: (user as any).image, // Make sure picture is set
           accessToken: (user as any).accessToken,
           refreshToken: (user as any).refreshToken,
           accessTokenExpires: Date.now() + expiresIn,
         };
       }
 
-      // 2. Return previous token if still valid
-      if (token.accessTokenExpires && Date.now() < (token.accessTokenExpires as number)) {
+      // 2. Check if token needs refresh
+      if (
+        token.accessTokenExpires &&
+        Date.now() < (token.accessTokenExpires as number)
+      ) {
+        // Periodically update user data (every 5 minutes)
+        if (Date.now() - (token.lastUpdated as number || 0) > 5 * 60 * 1000) {
+          const updatedToken = await updateUserData(token);
+          return {
+            ...updatedToken,
+            lastUpdated: Date.now(),
+          };
+        }
         return token;
       }
 
       // 3. Refresh token if expired
-      return refreshAccessToken(token);
+      const refreshedToken = await refreshAccessToken(token);
+      // Update user data after refresh
+      const updatedToken = await updateUserData(refreshedToken);
+      return {
+        ...updatedToken,
+        lastUpdated: Date.now(),
+      };
     },
     async session({ session, token }: any) {
       if (token) {
@@ -169,7 +236,8 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role;
         session.user.premium = token.premium;
         session.user.subscriptionType = token.subscriptionType;
-        session.user.image = token.image; // CRITICAL: Pass image to session
+        session.user.image = token.image || token.picture; // Use image or picture
+        session.user.name = token.name;
         session.accessToken = token.accessToken;
         session.error = token.error;
       }
@@ -177,11 +245,17 @@ export const authOptions: NextAuthOptions = {
     },
   },
   pages: {
-    signIn: '/login',
-    error: '/login', // Redirect to login page on errors
+    signIn: "/login",
+    error: "/login",
   },
   session: { strategy: "jwt" },
   secret: process.env.AUTH_SECRET,
+  // ADD THIS: Enable session updates
+  events: {
+    async signIn({ user }) {
+      console.log("User signed in:", user.email);
+    },
+  },
 };
 
 const handler = NextAuth(authOptions);

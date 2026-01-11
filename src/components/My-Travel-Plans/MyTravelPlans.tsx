@@ -280,7 +280,7 @@ export function MyTravelPlans() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="sticky top-0 z-40 bg-gradient-to-r from-white via-white to-orange-50 border-b border-stone-200 shadow-sm backdrop-blur-sm bg-white/95"
+        className="md:sticky top-0 z-40 bg-gradient-to-r from-white via-white to-orange-50 border-b border-stone-200 shadow-sm backdrop-blur-sm bg-white/95"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Top Bar */}

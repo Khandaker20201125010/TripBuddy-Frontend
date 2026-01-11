@@ -12,6 +12,7 @@ import {
     ZapIcon,
 } from 'lucide-react'
 import Image from 'next/image'
+
 const features = [
     {
         icon: BrainIcon,
@@ -50,6 +51,7 @@ const features = [
             'Transparent scoring shows exactly why you and a traveler are a great match.',
     },
 ]
+
 export function AIFeature() {
     const [positions, setPositions] = React.useState<number[][]>([]);
     const ref = useRef(null)
@@ -64,13 +66,14 @@ export function AIFeature() {
             50 + 40 * Math.cos((i * Math.PI * 2) / 6)
         ]));
     }, []);
+
     return (
         <section
             ref={ref}
-            className="py-24 bg-var(--color-warm-white) overflow-hidden"
+            className="py-12 md:py-16 lg:py-24 bg-var(--color-warm-white) overflow-hidden"
         >
-            <div className="max-w-7xl mx-auto px-6">
-                <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
                     {/* Left: Visual */}
                     <motion.div
                         initial={{
@@ -88,9 +91,9 @@ export function AIFeature() {
                         transition={{
                             duration: 0.8,
                         }}
-                        className="relative"
+                        className="relative order-2 lg:order-1"
                     >
-                        <div className="relative aspect-square max-w-lg mx-auto">
+                        <div className="relative aspect-square max-w-md lg:max-w-lg mx-auto">
                             {/* Central AI brain */}
                             <div className="absolute inset-0 flex items-center justify-center">
                                 <motion.div
@@ -102,9 +105,9 @@ export function AIFeature() {
                                         repeat: Infinity,
                                         ease: 'easeInOut',
                                     }}
-                                    className="w-40 h-40 rounded-full gradient-sunset flex items-center justify-center shadow-2xl shadow-(--color-coral)/30"
+                                    className="w-32 h-32 md:w-40 md:h-40 rounded-full gradient-sunset flex items-center justify-center shadow-2xl shadow-(--color-coral)/30"
                                 >
-                                    <SparklesIcon className="w-16 h-16 text-white" />
+                                    <SparklesIcon className="w-12 h-12 md:w-16 md:h-16 text-white" />
                                 </motion.div>
                             </div>
 
@@ -121,18 +124,17 @@ export function AIFeature() {
                                         initial={{ opacity: 0, scale: 0 }}
                                         animate={isInView ? { opacity: 1, scale: 1 } : {}}
                                         transition={{ delay: 0.5 + i * 0.1, duration: 0.5 }}
-                                        className="absolute w-16 h-16 rounded-2xl bg-white shadow-lg flex items-center justify-center"
+                                        className="absolute w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-white shadow-lg flex items-center justify-center"
                                     >
                                         <Image
-                                            width={40}
-                                            height={40}
+                                            width={32}
+                                            height={32}
+                                            className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover"
                                             src={`https://images.unsplash.com/photo-${['1494790108377-be9c29b29330', '1507003211169-0a1dd7228f2d', '1438761681033-6461ffad8d80', '1472099645785-5658abf4ff4e', '1534528741775-53994a69daeb', '1500648767791-00dcc994a43e'][i]}?w=60&h=60&fit=crop&crop=face`}
                                             alt="Traveler"
-                                            className="w-10 h-10 rounded-full object-cover"
                                         />
                                     </motion.div>
                                 ))}
-
 
                             {/* Connection lines */}
                             <svg
@@ -155,14 +157,13 @@ export function AIFeature() {
                                         animate={isInView ? { pathLength: 1 } : {}}
                                         transition={{ delay: 0.3 + i * 0.1, duration: 0.5 }}
                                     />
-
                                 ))}
                             </svg>
                         </div>
                     </motion.div>
 
                     {/* Right: Content */}
-                    <div>
+                    <div className="order-1 lg:order-2">
                         <motion.div
                             initial={{
                                 opacity: 0,
@@ -180,23 +181,23 @@ export function AIFeature() {
                                 duration: 0.6,
                             }}
                         >
-                            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-(--color-coral)/10 text-(--color-coral) text-sm font-medium mb-6">
-                                <SparklesIcon className="w-4 h-4 " />
+                            <span className="inline-flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-(--color-coral)/10 text-(--color-coral) text-xs md:text-sm font-medium mb-4 md:mb-6">
+                                <SparklesIcon className="w-3 h-3 md:w-4 md:h-4" />
                                 AI-Powered Matching
                             </span>
 
-                            <h2 className="font-display text-4xl md:text-5xl font-bold text-(--color-charcoal) mb-6">
+                            <h2 className="font-display text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-(--color-charcoal) mb-4 md:mb-6">
                                 Intelligent Travel Companion Matching
                             </h2>
 
-                            <p className="text-xl text-(--color-charcoal)/60 mb-10 leading-relaxed">
+                            <p className="text-base md:text-xl text-(--color-charcoal)/60 mb-6 md:mb-10 leading-relaxed">
                                 Our proprietary AI doesn't just match destinations—it
                                 understands the nuances of travel compatibility to find your
                                 perfect adventure partner.
                             </p>
                         </motion.div>
 
-                        <div className="grid sm:grid-cols-2 gap-6">
+                        <div className="grid sm:grid-cols-2 gap-4 md:gap-6">
                             {features.map((feature, index) => (
                                 <motion.div
                                     key={feature.title}
@@ -216,16 +217,16 @@ export function AIFeature() {
                                         duration: 0.5,
                                         delay: 0.2 + index * 0.1,
                                     }}
-                                    className="flex gap-4"
+                                    className="flex gap-3 md:gap-4"
                                 >
-                                    <div className="w-10 h-10 rounded-xl bg-(--color-sand) flex items-center justify-center shrink-0">
-                                        <feature.icon className="w-5 h-5 text-(--color-teal)" />
+                                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-(--color-sand) flex items-center justify-center shrink-0">
+                                        <feature.icon className="w-4 h-4 md:w-5 md:h-5 text-(--color-teal)" />
                                     </div>
-                                    <div>
-                                        <h3 className="font-semibold text-(--color-charcoal) mb-1">
+                                    <div className="flex-1">
+                                        <h3 className="font-semibold text-sm md:text-base text-(--color-charcoal) mb-1">
                                             {feature.title}
                                         </h3>
-                                        <p className="text-sm text-(--color-charcoal)/60">
+                                        <p className="text-xs md:text-sm text-(--color-charcoal)/60">
                                             {feature.description}
                                         </p>
                                     </div>

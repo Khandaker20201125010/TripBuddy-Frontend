@@ -159,7 +159,7 @@ export default function ManageUsersComponent() {
                       <div className="flex items-center gap-3">
                         <div className="relative w-10 h-10 rounded-full overflow-hidden border bg-slate-100">
                           <Image 
-                            src={getImageSrc(user.profileImage || "/placeholder-user.png")} 
+                            src={getImageSrc(user.profileImage)} 
                             alt={user.name || "user"} 
                             fill 
                             className="object-cover" 

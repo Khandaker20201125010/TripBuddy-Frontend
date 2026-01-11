@@ -10,7 +10,7 @@ import Swal from "sweetalert2";
 import api from "@/lib/axios";
 import Image from "next/image";
 import { Textarea } from "./textarea";
-import { X, Plus } from "lucide-react";
+import { X, Plus, Upload, Loader2 } from "lucide-react";
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -20,7 +20,7 @@ interface EditProfileModalProps {
 }
 
 export function EditProfileModal({ isOpen, onClose, user, onSuccess }: EditProfileModalProps) {
-  const { update } = useSession();
+  const { data: session, update } = useSession(); // Get session data
   const [formData, setFormData] = useState({
     name: user.name || "",
     bio: user.bio || "",
@@ -29,9 +29,9 @@ export function EditProfileModal({ isOpen, onClose, user, onSuccess }: EditProfi
   });
   const [interests, setInterests] = useState<string[]>(user.interests || []);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Predefined list of travel interests to suggest
   const suggestedInterests = [
     "Hiking", "Beaches", "Cultural", "Adventure", "Food", "History",
     "Photography", "Wildlife", "Sightseeing", "Luxury", "Backpacking",
@@ -51,6 +51,7 @@ export function EditProfileModal({ isOpen, onClose, user, onSuccess }: EditProfi
       });
       setInterests(user.interests || []);
       setImageFile(null);
+      setPreviewUrl(null);
     }
   }, [isOpen, user]);
 
@@ -60,7 +61,32 @@ export function EditProfileModal({ isOpen, onClose, user, onSuccess }: EditProfi
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setImageFile(e.target.files[0]);
+      const file = e.target.files[0];
+      
+      // Validate file type
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!validTypes.includes(file.type)) {
+        Swal.fire({
+          title: 'Invalid File',
+          text: 'Please select a valid image file (JPEG, PNG, GIF, WebP)',
+          icon: 'error'
+        });
+        return;
+      }
+      
+      // Validate file size (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        Swal.fire({
+          title: 'File Too Large',
+          text: 'Image size should be less than 5MB',
+          icon: 'error'
+        });
+        return;
+      }
+      
+      setImageFile(file);
+      // Create preview URL
+      setPreviewUrl(URL.createObjectURL(file));
     }
   };
 
@@ -91,15 +117,18 @@ export function EditProfileModal({ isOpen, onClose, user, onSuccess }: EditProfi
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (loading) return;
+    
     setLoading(true);
 
     try {
-      const payload = new FormData();
+      const formDataToSend = new FormData();
       
       // Prepare the data object
       const data = {
-        name: formData.name,
-        bio: formData.bio,
+        name: formData.name.trim(),
+        bio: formData.bio.trim(),
         visitedCountries: formData.visitedCountries
           .split(",")
           .map((s: string) => s.trim())
@@ -110,28 +139,48 @@ export function EditProfileModal({ isOpen, onClose, user, onSuccess }: EditProfi
       console.log("Submitting data:", data);
 
       // Append the JSON data as a string
-      payload.append("data", JSON.stringify(data));
+      formDataToSend.append("data", JSON.stringify(data));
 
-      // IMPORTANT: Use "file" as the field name (not "profileImage")
+      // IMPORTANT: Use "file" as the field name (matching your backend)
       if (imageFile) {
-        payload.append("file", imageFile);
+        formDataToSend.append("file", imageFile);
       }
 
-      const response = await api.patch(`/user/${user.id}`, payload, {
-        headers: { "Content-Type": "multipart/form-data" },
+      // Get access token directly from session
+      const accessToken = session?.accessToken;
+      
+      if (!accessToken) {
+        throw new Error("No access token found");
+      }
+
+      const response = await api.patch(`/user/${user.id}`, formDataToSend, {
+        headers: { 
+          "Content-Type": "multipart/form-data",
+          "Authorization": `Bearer ${accessToken}`
+        },
       });
 
-      console.log("Update response:", response);
+      console.log("Update response:", response.data);
 
-      // Update the NextAuth session with new user data
+      // Update the NextAuth session with ALL new user data
       if (response.data.data) {
         await update({
+          // Update the user object in session
           user: {
+            ...session?.user, // Keep existing user data
             name: response.data.data.name || user.name,
-            email: user.email,
             image: response.data.data.profileImage || user.profileImage,
-          }
+            // Update other fields if needed
+            bio: response.data.data.bio || user.bio,
+            interests: response.data.data.interests || user.interests,
+            visitedCountries: response.data.data.visitedCountries || user.visitedCountries,
+          },
+          // Keep the access token and other session data
+          accessToken: session?.accessToken,
         });
+        
+        // Also force a session refresh
+        await fetch('/api/auth/session?update=true');
       }
 
       Swal.fire({
@@ -141,6 +190,11 @@ export function EditProfileModal({ isOpen, onClose, user, onSuccess }: EditProfi
         timer: 2000,
         showConfirmButton: false
       });
+      
+      // Clean up preview URL
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
       
       onSuccess();
       onClose();
@@ -166,40 +220,54 @@ export function EditProfileModal({ isOpen, onClose, user, onSuccess }: EditProfi
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6 mt-2">
-          {/* Profile Image Preview */}
-          <div className="flex flex-col items-center gap-3 mb-4">
-            {imageFile ? (
-              <div className="relative w-24 h-24">
+          {/* Profile Image Section */}
+          <div className="flex flex-col items-center gap-4 mb-6">
+            <div className="relative group">
+              {/* Profile Image Preview */}
+              <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg">
                 <Image 
-                  width={96} 
-                  height={96} 
-                  src={URL.createObjectURL(imageFile)} 
-                  alt="Preview" 
-                  className="w-full h-full rounded-full object-cover border-2 border-primary/20" 
+                  src={previewUrl || user.profileImage || "/images/userProfile.jpg"} 
+                  alt="Profile" 
+                  fill
+                  className="object-cover"
+                  sizes="128px"
                 />
+                
+                {/* Upload Overlay */}
+                <label 
+                  htmlFor="profileImage"
+                  className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                >
+                  <Upload className="w-8 h-8 text-white" />
+                </label>
               </div>
-            ) : (
-              <div className="relative w-24 h-24">
-                <Image 
-                  width={96} 
-                  height={96} 
-                  src={user.profileImage || "/placeholder-user.png"} 
-                  alt="Current" 
-                  className="w-full h-full rounded-full object-cover border-2 border-primary/20" 
-                />
-              </div>
-            )}
+              
+              {/* Edit Indicator */}
+              {imageFile && (
+                <div className="absolute -top-2 -right-2 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center animate-pulse">
+                  <span className="text-white text-xs">✓</span>
+                </div>
+              )}
+            </div>
+            
             <div className="text-center">
-              <Label htmlFor="profileImage" className="text-sm text-muted-foreground">
-                Profile Picture
+              <Label 
+                htmlFor="profileImage" 
+                className="text-sm font-medium text-gray-700 cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                <Upload className="w-4 h-4" />
+                Change Profile Picture
               </Label>
               <Input 
                 id="profileImage"
                 type="file" 
                 accept="image/*" 
                 onChange={handleFileChange} 
-                className="w-full max-w-xs text-xs mt-1"
+                className="hidden"
               />
+              <p className="text-xs text-gray-500 mt-2">
+                Supports JPG, PNG, WebP (max 5MB)
+              </p>
             </div>
           </div>
 
@@ -212,6 +280,7 @@ export function EditProfileModal({ isOpen, onClose, user, onSuccess }: EditProfi
               onChange={handleChange} 
               required 
               placeholder="Enter your full name"
+              disabled={loading}
             />
           </div>
 
@@ -224,6 +293,7 @@ export function EditProfileModal({ isOpen, onClose, user, onSuccess }: EditProfi
               onChange={handleChange} 
               className="min-h-[100px] resize-none"
               placeholder="Tell us about your travel style, favorite destinations, or travel philosophy..." 
+              disabled={loading}
             />
           </div>
 
@@ -238,7 +308,7 @@ export function EditProfileModal({ isOpen, onClose, user, onSuccess }: EditProfi
             
             {/* Current Interests */}
             {interests.length > 0 && (
-              <div className="flex flex-wrap gap-2 p-3 bg-muted/30 rounded-lg">
+              <div className="flex flex-wrap gap-2 p-3 bg-gray-50 rounded-lg">
                 {interests.map((interest, index) => (
                   <Badge 
                     key={index} 
@@ -249,7 +319,8 @@ export function EditProfileModal({ isOpen, onClose, user, onSuccess }: EditProfi
                     <button
                       type="button"
                       onClick={() => removeInterest(interest)}
-                      className="ml-1 hover:text-destructive transition-colors"
+                      className="ml-1 hover:text-red-500 transition-colors"
+                      disabled={loading}
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -268,14 +339,14 @@ export function EditProfileModal({ isOpen, onClose, user, onSuccess }: EditProfi
                 onKeyPress={handleKeyPress}
                 placeholder="Add an interest (e.g., Hiking, Food, Culture)"
                 className="flex-1"
-                disabled={interests.length >= 20}
+                disabled={interests.length >= 20 || loading}
               />
               <Button
                 type="button"
                 variant="outline"
                 size="icon"
                 onClick={addInterest}
-                disabled={!formData.newInterest.trim() || interests.length >= 20}
+                disabled={!formData.newInterest.trim() || interests.length >= 20 || loading}
               >
                 <Plus className="h-4 w-4" />
               </Button>
@@ -283,14 +354,14 @@ export function EditProfileModal({ isOpen, onClose, user, onSuccess }: EditProfi
 
             {/* Suggested Interests */}
             <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Suggestions:</p>
+              <p className="text-sm text-gray-600">Suggested interests:</p>
               <div className="flex flex-wrap gap-2">
                 {suggestedInterests.map((interest) => (
                   <Badge
                     key={interest}
                     variant={interests.includes(interest) ? "default" : "outline"}
-                    className="cursor-pointer hover:bg-primary/10 transition-colors"
-                    onClick={() => addSuggestedInterest(interest)}
+                    className="cursor-pointer hover:bg-blue-50 transition-colors"
+                    onClick={() => !loading && addSuggestedInterest(interest)}
                   >
                     {interest}
                     {interests.includes(interest) && (
@@ -310,30 +381,32 @@ export function EditProfileModal({ isOpen, onClose, user, onSuccess }: EditProfi
               value={formData.visitedCountries} 
               onChange={handleChange} 
               placeholder="Japan, France, Brazil, Italy, Thailand..." 
+              disabled={loading}
             />
-            <p className="text-xs text-muted-foreground">
-              Separate countries with commas
+            <p className="text-xs text-gray-500">
+              Separate countries with commas (e.g., Japan, France, Brazil)
             </p>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
             <Button 
               type="button" 
               variant="outline" 
               onClick={onClose}
               disabled={loading}
+              className="min-w-[100px]"
             >
               Cancel
             </Button>
             <Button 
-              variant="default" 
+              variant="gradient" 
               type="submit" 
               disabled={loading}
-              className="bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+              className="min-w-[140px] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
             >
               {loading ? (
                 <>
-                  <span className="animate-spin mr-2">⟳</span>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Saving...
                 </>
               ) : (

@@ -25,7 +25,7 @@ export function SearchFilters({ onChange }: { onChange: (filters: TravelerFilter
   useEffect(() => {
     const timer = setTimeout(() => {
       onChange(localFilters);
-    }, 300); // Reduced debounce time
+    }, 300);
     return () => clearTimeout(timer);
   }, [localFilters, onChange]);
 
@@ -59,14 +59,14 @@ export function SearchFilters({ onChange }: { onChange: (filters: TravelerFilter
   const hasActiveFilters = activeTags.length > 0 || localFilters.searchTerm || localFilters.destination;
 
   return (
-    <div className="space-y-6 p-6 bg-white/50 backdrop-blur-sm rounded-2xl border border-stone-200/50 shadow-lg">
+    <div className="space-y-4 md:space-y-6 p-4 md:p-6 bg-white/50 backdrop-blur-sm rounded-xl md:rounded-2xl border border-stone-200/50 shadow-lg">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Filter className="h-5 w-5 text-stone-600" />
-          <h3 className="text-lg font-semibold text-stone-800">Find Travelers</h3>
+          <Filter className="h-4 w-4 md:h-5 md:w-5 text-stone-600" />
+          <h3 className="text-base md:text-lg font-semibold text-stone-800">Find Travelers</h3>
           {hasActiveFilters && (
-            <Badge variant="outline" className="ml-2 bg-stone-50">
+            <Badge variant="outline" className="ml-2 bg-stone-50 text-xs md:text-sm">
               {activeTags.length} filter{activeTags.length !== 1 ? 's' : ''} active
             </Badge>
           )}
@@ -77,50 +77,50 @@ export function SearchFilters({ onChange }: { onChange: (filters: TravelerFilter
             variant="ghost"
             size="sm"
             onClick={clearFilters}
-            className="text-stone-500 hover:text-stone-700"
+            className="text-stone-500 hover:text-stone-700 text-xs md:text-sm"
           >
-            <X className="h-4 w-4 mr-1" />
+            <X className="h-3 w-3 md:h-4 md:w-4 mr-1" />
             Clear all
           </Button>
         )}
       </div>
 
       {/* Search Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
         {/* Search by name/email/bio */}
         <div className="relative group">
-          <Search className="h-4 w-4 absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 group-focus-within:text-stone-600 transition-colors" />
+          <Search className="h-3 w-3 md:h-4 md:w-4 absolute left-3 md:left-4 top-1/2 -translate-y-1/2 text-stone-400 group-focus-within:text-stone-600 transition-colors" />
           <Input
             placeholder="Name, email, or bio..."
-            className="h-12 text-base pl-11 border-stone-200 bg-white/80 focus:border-stone-300 focus:ring-2 focus:ring-stone-100 transition-all"
+            className="h-10 md:h-12 text-sm md:text-base pl-9 md:pl-11 border-stone-200 bg-white/80 focus:border-stone-300 focus:ring-2 focus:ring-stone-100 transition-all"
             value={localFilters.searchTerm}
             onChange={(e) => setLocalFilters(p => ({ ...p, searchTerm: e.target.value }))}
           />
           {localFilters.searchTerm && (
             <button
               onClick={() => setLocalFilters(p => ({ ...p, searchTerm: '' }))}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+              className="absolute right-2 md:right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3 w-3 md:h-4 md:w-4" />
             </button>
           )}
         </div>
 
         {/* Destination */}
         <div className="relative group">
-          <MapPin className="h-4 w-4 absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 group-focus-within:text-stone-600 transition-colors" />
+          <MapPin className="h-3 w-3 md:h-4 md:w-4 absolute left-3 md:left-4 top-1/2 -translate-y-1/2 text-stone-400 group-focus-within:text-stone-600 transition-colors" />
           <Input
             placeholder="Destination or location..."
-            className="h-12 text-base pl-11 border-stone-200 bg-white/80 focus:border-stone-300 focus:ring-2 focus:ring-stone-100 transition-all"
+            className="h-10 md:h-12 text-sm md:text-base pl-9 md:pl-11 border-stone-200 bg-white/80 focus:border-stone-300 focus:ring-2 focus:ring-stone-100 transition-all"
             value={localFilters.destination}
             onChange={(e) => setLocalFilters(p => ({ ...p, destination: e.target.value }))}
           />
           {localFilters.destination && (
             <button
               onClick={() => setLocalFilters(p => ({ ...p, destination: '' }))}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+              className="absolute right-2 md:right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3 w-3 md:h-4 md:w-4" />
             </button>
           )}
         </div>
@@ -130,13 +130,13 @@ export function SearchFilters({ onChange }: { onChange: (filters: TravelerFilter
           <Button
             variant="outline"
             onClick={clearFilters}
-            className="h-12 flex-1 border-stone-200 hover:bg-stone-50"
+            className="h-10 md:h-12 flex-1 border-stone-200 hover:bg-stone-50 text-sm md:text-base"
           >
             Reset
           </Button>
           <Button
             variant="gradient"
-            className="h-12 flex-1 shadow-md hover:shadow-lg transition-shadow"
+            className="h-10 md:h-12 flex-1 shadow-md hover:shadow-lg transition-shadow text-sm md:text-base"
           >
             Search
           </Button>
@@ -144,9 +144,9 @@ export function SearchFilters({ onChange }: { onChange: (filters: TravelerFilter
       </div>
 
       {/* Travel Types */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 text-sm font-medium text-stone-600">
-          <Compass className="h-4 w-4" />
+      <div className="space-y-2 md:space-y-3">
+        <div className="flex items-center gap-2 text-xs md:text-sm font-medium text-stone-600">
+          <Compass className="h-3 w-3 md:h-4 md:w-4" />
           Travel Interests
         </div>
         
@@ -158,17 +158,17 @@ export function SearchFilters({ onChange }: { onChange: (filters: TravelerFilter
                 key={label}
                 variant={isActive ? 'default' : 'outline'}
                 className={cn(
-                  "cursor-pointer transition-all px-4 py-2.5 rounded-lg font-medium border",
+                  "cursor-pointer transition-all px-3 py-2 md:px-4 md:py-2.5 rounded-lg font-medium border text-xs md:text-sm",
                   isActive
                     ? "bg-linear-to-r from-orange-300 to-orange-500 text-white shadow-sm hover:from-orange-600 hover:to-orange-500"
                     : "bg-white/80 border-orange-200 text-stone-700 hover:bg-orange-50 hover:border-orange-300 hover:shadow-sm"
                 )}
                 onClick={() => toggleTag(label)}
               >
-                <span className="mr-2">{emoji}</span>
+                <span className="mr-1 md:mr-2">{emoji}</span>
                 {label}
                 {isActive && (
-                  <X className="h-3 w-3 ml-2 inline" />
+                  <X className="h-2 w-2 md:h-3 md:w-3 ml-1 md:ml-2 inline" />
                 )}
               </Badge>
             );
@@ -178,41 +178,41 @@ export function SearchFilters({ onChange }: { onChange: (filters: TravelerFilter
 
       {/* Active Filters Preview */}
       {hasActiveFilters && (
-        <div className="pt-4 border-t border-stone-100">
+        <div className="pt-3 md:pt-4 border-t border-stone-100">
           <div className="flex flex-wrap gap-2">
             {localFilters.searchTerm && (
-              <Badge variant="secondary" className="pl-3 pr-2 py-1.5">
+              <Badge variant="secondary" className="pl-2 pr-1.5 py-1 md:pl-3 md:pr-2 md:py-1.5 text-xs">
                 Search: "{localFilters.searchTerm}"
                 <button
                   onClick={() => setLocalFilters(p => ({ ...p, searchTerm: '' }))}
-                  className="ml-2 hover:bg-stone-200 rounded-full p-0.5"
+                  className="ml-1 md:ml-2 hover:bg-stone-200 rounded-full p-0.5"
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-2 w-2 md:h-3 md:w-3" />
                 </button>
               </Badge>
             )}
             
             {localFilters.destination && (
-              <Badge variant="secondary" className="pl-3 pr-2 py-1.5">
-                <MapPin className="h-3 w-3 mr-1 inline" />
+              <Badge variant="secondary" className="pl-2 pr-1.5 py-1 md:pl-3 md:pr-2 md:py-1.5 text-xs">
+                <MapPin className="h-2 w-2 md:h-3 md:w-3 mr-1 inline" />
                 {localFilters.destination}
                 <button
                   onClick={() => setLocalFilters(p => ({ ...p, destination: '' }))}
-                  className="ml-2 hover:bg-stone-200 rounded-full p-0.5"
+                  className="ml-1 md:ml-2 hover:bg-stone-200 rounded-full p-0.5"
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-2 w-2 md:h-3 md:w-3" />
                 </button>
               </Badge>
             )}
             
             {activeTags.map(tag => (
-              <Badge key={tag} variant="secondary" className="pl-3 pr-2 py-1.5">
+              <Badge key={tag} variant="secondary" className="pl-2 pr-1.5 py-1 md:pl-3 md:pr-2 md:py-1.5 text-xs">
                 {travelTypes.find(t => t.label === tag)?.emoji} {tag}
                 <button
                   onClick={() => toggleTag(tag)}
-                  className="ml-2 hover:bg-stone-200 rounded-full p-0.5"
+                  className="ml-1 md:ml-2 hover:bg-stone-200 rounded-full p-0.5"
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-2 w-2 md:h-3 md:w-3" />
                 </button>
               </Badge>
             ))}

@@ -12,6 +12,8 @@ export interface UserProfile {
   createdAt: string;
   travelPlans: any[];
   reviewsReceived: any[];
+  latitude?: number;
+  longitude?: number;
   interests?: string[];
   location?: string;
   status?: 'ACTIVE' | 'INACTIVE';

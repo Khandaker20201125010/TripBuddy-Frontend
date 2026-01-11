@@ -34,14 +34,14 @@ const loggedInAdminNavLinks = [
 
 export function Navbar() {
   const pathname = usePathname()
-  const { data: session, status } = useSession() 
+  const { data: session, status } = useSession()
   const [isOpen, setIsOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const notificationRef = useRef<HTMLDivElement>(null)
   const userMenuRef = useRef<HTMLDivElement>(null)
-  
+
   // Get notifications with proper authentication check
   const { totalNotifications, isAuthenticated: notificationsAuthenticated } = useNotifications();
 
@@ -56,11 +56,11 @@ export function Navbar() {
     if (status === 'authenticated' && session?.accessToken) {
       // Check for Refresh Error
       if ((session as any).error === "RefreshAccessTokenError") {
-        signOut({ callbackUrl: '/login' }); 
+        signOut({ callbackUrl: '/login' });
         return;
       }
       // Sync cookie for middleware usage
-      setCookie('accessToken', session.accessToken, { path: '/', maxAge: 3600 }); 
+      setCookie('accessToken', session.accessToken, { path: '/', maxAge: 3600 });
     } else if (status === 'unauthenticated') {
       // Cleanup
       deleteCookie('accessToken');
@@ -77,15 +77,15 @@ export function Navbar() {
           setShowNotifications(false);
         }
       }
-      
+
       // Close user menu if clicking outside (only on desktop)
       if (window.innerWidth >= 768 && userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
         setShowUserMenu(false);
       }
     }
-    
+
     document.addEventListener("mousedown", handleClickOutside);
-    
+
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
@@ -118,7 +118,7 @@ export function Navbar() {
   const userMenuItems = [
     {
       name: 'Dashboard',
-      href: isAdmin ? '/adminDashboard' : '/dashboard/profile',
+      href: isAdmin ? '/adminDashboard/adminProfile' : '/dashboard/profile',
       icon: <LayoutDashboard className="h-4 w-4" />
     },
     {
@@ -176,8 +176,8 @@ export function Navbar() {
                       className={`
                         relative font-medium transition-colors text-sm lg:text-base
                         ${active
-                          ? isAdmin 
-                            ? 'text-purple-600' 
+                          ? isAdmin
+                            ? 'text-purple-600'
                             : 'text-(--color-coral)'
                           : 'text-(--color-charcoal)/70 hover:text-(--color-coral)'
                         }
@@ -185,10 +185,9 @@ export function Navbar() {
                     >
                       {link.name}
                       {active && (
-                        <span 
-                          className={`absolute -bottom-1 left-0 right-0 h-0.5 rounded-full ${
-                            isAdmin ? 'bg-purple-600' : 'bg-(--color-coral)'
-                          }`} 
+                        <span
+                          className={`absolute -bottom-1 left-0 right-0 h-0.5 rounded-full ${isAdmin ? 'bg-purple-600' : 'bg-(--color-coral)'
+                            }`}
                         />
                       )}
                     </Link>
@@ -228,10 +227,10 @@ export function Navbar() {
                     onClick={() => setShowUserMenu(!showUserMenu)}
                     className="flex items-center gap-2 p-1 rounded-full hover:bg-stone-100 transition-colors"
                   >
-                    <NavbarAvatar 
-                      src={session?.user?.image} 
-                      name={session?.user?.name} 
-                      size="md" 
+                    <NavbarAvatar
+                      src={session?.user?.image || session?.user?.picture || undefined}
+                      name={session?.user?.name}
+                      size="md"
                     />
                     <div className="text-left hidden lg:block">
                       <p className="text-sm font-medium text-(--color-charcoal) truncate max-w-[120px]">
@@ -257,10 +256,10 @@ export function Navbar() {
                         {/* User Info Section */}
                         <div className="px-4 py-3 border-b border-stone-100">
                           <div className="flex items-center gap-3">
-                            <NavbarAvatar 
-                              src={session?.user?.image} 
-                              name={session?.user?.name} 
-                              size="md" 
+                            <NavbarAvatar
+                              src={session?.user?.image}
+                              name={session?.user?.name}
+                              size="md"
                             />
                             <div>
                               <p className="font-medium text-(--color-charcoal)">
@@ -389,10 +388,9 @@ export function Navbar() {
                     >
                       {link.name}
                       {active && (
-                        <div 
-                          className={`ml-2 h-1.5 w-1.5 rounded-full ${
-                            isAdmin ? 'bg-purple-600' : 'bg-(--color-coral)'
-                          }`} 
+                        <div
+                          className={`ml-2 h-1.5 w-1.5 rounded-full ${isAdmin ? 'bg-purple-600' : 'bg-(--color-coral)'
+                            }`}
                         />
                       )}
                     </Link>
@@ -406,10 +404,10 @@ export function Navbar() {
                       <div className="px-4 py-3 mb-2 bg-stone-50 rounded-lg">
                         <div className="flex items-center gap-3">
                           {/* Show small avatar in mobile menu */}
-                          <NavbarAvatar 
-                            src={session?.user?.image} 
-                            name={session?.user?.name} 
-                            size="sm" 
+                          <NavbarAvatar
+                            src={session?.user?.image}
+                            name={session?.user?.name}
+                            size="sm"
                           />
                           <div>
                             <p className="font-medium text-(--color-charcoal)">
@@ -446,13 +444,13 @@ export function Navbar() {
                         <LogOut className="h-4 w-4" />
                         <span>Logout</span>
                       </button>
-                      
+
                       {!isAdmin && (
                         <div className="px-4 py-2 text-sm text-stone-500">
                           <div className="flex items-center gap-2">
                             <Bell className="h-4 w-4" />
                             <span>
-                              {notificationsAuthenticated && totalNotifications > 0 
+                              {notificationsAuthenticated && totalNotifications > 0
                                 ? `${totalNotifications} notification${totalNotifications !== 1 ? 's' : ''}`
                                 : 'No notifications'
                               }

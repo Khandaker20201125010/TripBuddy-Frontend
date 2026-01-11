@@ -60,7 +60,7 @@ export default function ManageRequests() {
                   <div key={buddy.id} className="flex items-center justify-between p-4 border rounded-xl hover:bg-gray-50 transition-colors">
                     <div className="flex items-center gap-4">
                       <div className="relative w-12 h-12 rounded-full overflow-hidden border">
-                        <Image fill src={getImageSrc(buddy.user?.profileImage || "/placeholder-user.png")} alt="User" />
+                        <Image fill src={getImageSrc(buddy.user?.profileImage || "/images/userProfile.jpg")} alt="User" />
                       </div>
                       <div>
                         <p className="font-bold">{buddy.user?.name}</p>

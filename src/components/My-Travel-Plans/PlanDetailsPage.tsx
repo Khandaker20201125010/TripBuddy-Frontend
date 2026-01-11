@@ -190,7 +190,7 @@ export default function PlanDetailsPage() {
                       <div className="flex justify-between items-center mb-3">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full overflow-hidden relative border border-gray-200">
-                            <Image src={getImageSrc(rev.reviewer?.profileImage || "/placeholder-user.png")} fill alt="Reviewer" className="object-cover" />
+                            <Image src={getImageSrc(rev.reviewer?.profileImage )} fill alt="Reviewer" className="object-cover" />
                           </div>
                           <div>
                             <p className="font-bold text-sm text-gray-900">{rev.reviewer?.name}</p>
@@ -222,7 +222,7 @@ export default function PlanDetailsPage() {
               <div className="relative w-16 h-16">
                 <Image
                   fill
-                  src={getImageSrc(plan.user?.profileImage || "/placeholder-user.png")}
+                  src={getImageSrc(plan.user?.profileImage )}
                   alt="Host"
                   className="rounded-full object-cover border-4 border-gray-50 shadow-sm"
                 />

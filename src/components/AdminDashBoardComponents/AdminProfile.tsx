@@ -12,8 +12,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import api from '@/lib/axios';
-import EditAdminModal from "./EditAdminModal"; // Ensure path is correct
+
 import { getImageSrc } from '@/helpers/getImageSrc ';
+import { EditAdminModal } from './EditAdminModal';
 
 const AdminProfile = ({ profile, onUpdate }: { profile: any; onUpdate: () => void }) => {
     const [stats, setStats] = useState({
@@ -68,7 +69,7 @@ const AdminProfile = ({ profile, onUpdate }: { profile: any; onUpdate: () => voi
                     <div className="relative group">
                         <div className="w-32 h-32 rounded-full border-4 border-blue-500/30 overflow-hidden relative shadow-2xl">
                             <Image
-                                src={getImageSrc(profile?.profileImage || "/placeholder-user.png")}
+                                src={getImageSrc(profile?.profileImage )}
                                 alt={profile?.name || "Admin Profile"}
                                 fill
                                 priority // Tells Next.js to preload this image
@@ -97,6 +98,7 @@ const AdminProfile = ({ profile, onUpdate }: { profile: any; onUpdate: () => voi
                     </div>
 
                     <div className="flex gap-4">
+                        
                         {/* Modal replacing the old Link */}
                         <EditAdminModal profile={profile} onUpdate={onUpdate} />
                     </div>

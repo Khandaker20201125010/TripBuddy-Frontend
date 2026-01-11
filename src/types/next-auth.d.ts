@@ -10,6 +10,7 @@ declare module "next-auth" {
       role?: string;
       premium?: boolean;
       subscriptionType?: string | null;
+      picture?: string;
     } & DefaultSession["user"];
   }
 
@@ -20,6 +21,7 @@ declare module "next-auth" {
     subscriptionType?: string | null;
     accessToken?: string;
     refreshToken?: string;
+    picture?: string;
   }
 }
 
@@ -31,7 +33,8 @@ declare module "next-auth/jwt" {
     subscriptionType?: string | null;
     accessToken?: string;
     refreshToken?: string;
-    accessTokenExpires?: number; // Add this
-    error?: string; // Add this
+    accessTokenExpires?: number; 
+    error?: string;
+    picture?: string;
   }
 }

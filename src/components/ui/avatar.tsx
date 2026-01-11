@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 
 // Helper function to safely get image URL
 const getSafeImageUrl = (src: string | Blob | undefined): string => {
-  if (!src) return '/placeholder-user.png';
+  if (!src) return '/images/userProfile.jpg';
   
   // If it's a Blob (from URL.createObjectURL), convert to string
   if (src instanceof Blob) {
@@ -26,7 +26,7 @@ const getSafeImageUrl = (src: string | Blob | undefined): string => {
   }
   
   // Default fallback
-  return '/placeholder-user.png';
+  return '/images/userProfile.jpg';
 }
 
 const Avatar = React.forwardRef<
