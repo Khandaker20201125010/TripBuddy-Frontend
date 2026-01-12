@@ -97,7 +97,12 @@ export default function UserProfileComponents() {
 
         <div className="mt-8">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">Location</h2>
+            <div className="flex flex-col gap-5">
+              <h2 className="text-2xl font-bold text-amber-600">Location</h2>
+              <p>
+                Use GPS or set your location manually to show your current live location on your profile.
+              </p>
+            </div>
             <div className="text-sm text-gray-500">
               {userProfile.latitude && userProfile.longitude ? (
                 <span className="flex items-center gap-2">
