@@ -227,7 +227,7 @@ export default function EnhancedUserLocationMap({
         <ErrorDisplay error={error} onDismiss={dismissError} />
 
         {/* Map Container */}
-        <div className="h-96 w-full z-0">
+        <div className="h-[550px] w-full z-0">
           {hasLocation ? (
             <MapWrapper
               center={mapCenter}

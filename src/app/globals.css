@@ -165,6 +165,7 @@ body {
 }
 .leaflet-container {
   font-family: inherit;
+  z-index: 1; /* Ensure map doesn't interfere with modals */
 }
 
 .custom-marker {
@@ -185,4 +186,25 @@ body {
 
 .leaflet-popup-tip {
   background: white;
+}
+
+/* Fix z-index issues */
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 10 !important; /* Lower than modal z-index */
+}
+
+.leaflet-pane {
+  z-index: 1 !important;
+}
+
+/* Modal should appear above map */
+.modal-container,
+[role="dialog"] {
+  z-index: 50 !important;
+}
+
+/* Fix for popup z-index */
+.leaflet-popup {
+  z-index: 20 !important;
 }

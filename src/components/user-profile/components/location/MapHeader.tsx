@@ -1,7 +1,8 @@
-// frontend/components/location/MapHeader.tsx
-import { MapPin, RefreshCw, Settings, Target } from "lucide-react";
+// frontend/components/location/CompactMapHeader.tsx
+import { MapPin, RefreshCw, Settings, Target, Navigation } from "lucide-react";
+import { motion } from "framer-motion";
 
-interface MapHeaderProps {
+interface CompactMapHeaderProps {
   locationName: string;
   isCurrentUser: boolean;
   isUpdating: boolean;
@@ -10,62 +11,88 @@ interface MapHeaderProps {
   onUseGPS: () => void;
 }
 
-export default function MapHeader({
+export default function CompactMapHeader({
   locationName,
   isCurrentUser,
   isUpdating,
   onRefresh,
   onSetManual,
   onUseGPS
-}: MapHeaderProps) {
+}: CompactMapHeaderProps) {
   return (
-    <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-r from-blue-600/95 to-purple-600/95 backdrop-blur-sm p-4 text-white">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-white/20 rounded-lg">
-            <MapPin className="w-5 h-5" />
+    <div className="absolute top-0 left-0 right-0 z-10 bg-white/95 backdrop-blur-lg p-3 text-gray-800 shadow-lg border-b border-gray-200/50">
+      <div className="flex items-center justify-between">
+        {/* Location Info */}
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="flex-shrink-0 p-1.5 gradient-sunset rounded-lg text-white">
+            <MapPin className="w-4 h-4" />
           </div>
-          <div>
-            <h3 className="font-semibold">Location Map</h3>
-            <p className="text-sm text-blue-100">
-              {locationName || "Location not available"}
-            </p>
+          <div className="min-w-0">
+            <p className="text-sm font-medium truncate">{locationName || "Unknown location"}</p>
+            <p className="text-xs text-gray-500">Live location tracking</p>
           </div>
         </div>
-        
-        <div className="flex gap-2">
-          <button
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-1">
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
             onClick={onRefresh}
             disabled={isUpdating}
-            className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors backdrop-blur-sm disabled:opacity-50"
+            className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+            title="Refresh location"
           >
             <RefreshCw className={`w-4 h-4 ${isUpdating ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
-          
+          </motion.button>
+
           {isCurrentUser && (
             <>
-              <button
+              <div className="w-px h-6 bg-gray-300 mx-1" />
+              
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
                 onClick={onSetManual}
                 disabled={isUpdating}
-                className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors backdrop-blur-sm disabled:opacity-50"
+                className="p-2 text-gray-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors disabled:opacity-50"
+                title="Set manual location"
               >
                 <Settings className="w-4 h-4" />
-                Set Location
-              </button>
+              </motion.button>
               
-              <button
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
                 onClick={onUseGPS}
                 disabled={isUpdating}
-                className="flex items-center gap-2 px-4 py-2 bg-white text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+                className="cursor-pointer p-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg hover:shadow-md transition-shadow disabled:opacity-50 flex items-center gap-1"
+                title="Use current GPS location"
               >
-                <Target className="w-4 h-4" />
-                Use GPS
-              </button>
+                <Navigation className="w-4 h-4" />
+                <span className="text-sm font-medium hidden sm:inline">GPS</span>
+              </motion.button>
             </>
           )}
         </div>
       </div>
+      
+      {/* Progress bar for updates */}
+      {isUpdating && (
+        <div className="absolute bottom-0 left-0 right-0 h-0.5 overflow-hidden">
+          <motion.div
+            animate={{
+              x: ["-100%", "100%"],
+            }}
+            transition={{
+              repeat: Infinity,
+              duration: 1,
+              ease: "linear"
+            }}
+            className="h-full w-1/4 bg-gradient-to-r from-blue-500 to-purple-500"
+          />
+        </div>
+      )}
     </div>
   );
 }
