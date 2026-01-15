@@ -1,7 +1,7 @@
 
 import { AlertTriangle } from 'lucide-react'
-import { Modal } from '../ui/Modal'
-import { Button } from '../ui/button'
+import { Modal } from '../../ui/Modal'
+import { Button } from '../../ui/button'
 interface DeleteConfirmDialogProps {
   isOpen: boolean
   onClose: () => void

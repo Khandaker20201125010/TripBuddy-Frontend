@@ -7,15 +7,15 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Swal from 'sweetalert2'
 import { TravelPlan, TravelPlanFormData } from '@/types/travel'
-import { getPlanStatus } from '../shared/getPlanStatus'
+import { getPlanStatus } from '../../shared/getPlanStatus'
 import { TravelPlanCard } from './TravelPlanCard'
 import { PlanFilters, FilterType } from './PlanFilters'
-import { Button } from '../ui/button'
-import { Modal } from '../ui/Modal'
+import { Button } from '../../ui/button'
+import { Modal } from '../../ui/Modal'
 import { TravelPlanForm } from './TravelPlanForm'
 import { DeleteConfirmDialog } from './DeleteConfirmDialog'
 import { useMyTravelPlans } from '@/hooks/travelshooks/useMyTravelPlans'
-import { Badge } from '../ui/badge'
+import { Badge } from '../../ui/badge'
 import { motion } from 'framer-motion'
 
 // Defined Limits based on subscription tiers
@@ -38,7 +38,7 @@ export function MyTravelPlans() {
   const [editingPlan, setEditingPlan] = useState<TravelPlan | undefined>()
   const [deletingPlan, setDeletingPlan] = useState<TravelPlan | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
 
@@ -75,10 +75,10 @@ export function MyTravelPlans() {
     const upcomingCount = plans.filter(p => getPlanStatus(p.startDate, p.endDate) === 'upcoming').length;
     const ongoingCount = plans.filter(p => getPlanStatus(p.startDate, p.endDate) === 'ongoing').length;
     const completedCount = plans.filter(p => getPlanStatus(p.startDate, p.endDate) === 'completed').length;
-    
+
     // Count unique destinations from all plans
     const destinations = [...new Set(plans.map(p => p.destination))].length;
-    
+
     // Calculate total travel days for user's plans
     const userTotalDays = userPlans.reduce((sum, plan) => {
       const start = new Date(plan.startDate);
@@ -90,10 +90,10 @@ export function MyTravelPlans() {
 
     // Get subscription info
     const subType = (session?.user as any)?.subscriptionType;
-    const planLimit = subType === 'MONTHLY' || subType === 'YEARLY' 
-      ? PLAN_LIMITS.UNLIMITED 
-      : subType === 'EXPLORER' 
-        ? PLAN_LIMITS.EXPLORER 
+    const planLimit = subType === 'MONTHLY' || subType === 'YEARLY'
+      ? PLAN_LIMITS.UNLIMITED
+      : subType === 'EXPLORER'
+        ? PLAN_LIMITS.EXPLORER
         : PLAN_LIMITS.FREE;
 
     return {
@@ -115,10 +115,10 @@ export function MyTravelPlans() {
    */
   const handleCreateClick = () => {
     const currentCount = userPlans.length;
-    
+
     // Safely get subscription type from session
-    const subType = (session?.user as any)?.subscriptionType; 
-    
+    const subType = (session?.user as any)?.subscriptionType;
+
     let limit = PLAN_LIMITS.FREE;
     if (subType === 'MONTHLY' || subType === 'YEARLY') {
       limit = PLAN_LIMITS.UNLIMITED;
@@ -202,7 +202,7 @@ export function MyTravelPlans() {
   const getPageNumbers = () => {
     const pageNumbers = [];
     const maxVisiblePages = 5;
-    
+
     if (totalPages <= maxVisiblePages) {
       // Show all pages
       for (let i = 1; i <= totalPages; i++) {
@@ -211,40 +211,40 @@ export function MyTravelPlans() {
     } else {
       // Always show first page
       pageNumbers.push(1);
-      
+
       // Calculate start and end of visible pages
       let start = Math.max(2, currentPage - 1);
       let end = Math.min(totalPages - 1, currentPage + 1);
-      
+
       // Adjust if near start
       if (currentPage <= 3) {
         end = Math.min(totalPages - 1, maxVisiblePages - 1);
       }
-      
+
       // Adjust if near end
       if (currentPage >= totalPages - 2) {
         start = Math.max(2, totalPages - (maxVisiblePages - 2));
       }
-      
+
       // Add ellipsis at start if needed
       if (start > 2) {
         pageNumbers.push('...');
       }
-      
+
       // Add middle pages
       for (let i = start; i <= end; i++) {
         pageNumbers.push(i);
       }
-      
+
       // Add ellipsis at end if needed
       if (end < totalPages - 1) {
         pageNumbers.push('...');
       }
-      
+
       // Always show last page
       pageNumbers.push(totalPages);
     }
-    
+
     return pageNumbers;
   }
 
@@ -276,7 +276,7 @@ export function MyTravelPlans() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-stone-50 via-white to-amber-50/20 pb-20">
       {/* Enhanced Professional Header */}
-      <motion.header 
+      <motion.header
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -328,12 +328,12 @@ export function MyTravelPlans() {
                     {travelStats.remainingPlans} plans left
                   </Badge>
                 </div>
-                <Button 
-                  variant={'gradient'} 
+                <Button
+                  variant={'gradient'}
                   onClick={handleCreateClick}
                   className="shadow-md shadow-orange-200 hover:shadow-lg hover:shadow-orange-300 transition-shadow"
                 >
-                  <Plus className="w-5 h-5 mr-2" /> 
+                  <Plus className="w-5 h-5 mr-2" />
                   <span className="hidden sm:inline">New Travel Plan</span>
                   <span className="sm:hidden">New Plan</span>
                 </Button>
@@ -345,7 +345,7 @@ export function MyTravelPlans() {
           <div className="py-5">
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-6">
               {/* Total Community Plans */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.1 }}
@@ -363,7 +363,7 @@ export function MyTravelPlans() {
               </motion.div>
 
               {/* Your Plans */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.2 }}
@@ -382,7 +382,7 @@ export function MyTravelPlans() {
               </motion.div>
 
               {/* Destinations */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.3 }}
@@ -400,7 +400,7 @@ export function MyTravelPlans() {
               </motion.div>
 
               {/* Travel Days */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.4 }}
@@ -418,7 +418,7 @@ export function MyTravelPlans() {
               </motion.div>
 
               {/* Activity Progress */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.5 }}
@@ -465,10 +465,10 @@ export function MyTravelPlans() {
                   Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredPlans.length)} of {filteredPlans.length} plans
                 </div>
               </div>
-              <PlanFilters 
-                currentFilter={filter} 
-                onFilterChange={handleFilterChange} 
-                counts={counts} 
+              <PlanFilters
+                currentFilter={filter}
+                onFilterChange={handleFilterChange}
+                counts={counts}
               />
             </div>
           </div>
@@ -492,12 +492,12 @@ export function MyTravelPlans() {
                 {filter === 'MyPlans' ? 'No Personal Plans Yet' : 'No Plans Found'}
               </h3>
               <p className="text-stone-600 mb-6">
-                {filter === 'MyPlans' 
+                {filter === 'MyPlans'
                   ? 'Start by creating your first travel plan to share with the community!'
                   : 'Try adjusting your filters or check back later for new travel plans.'}
               </p>
               {filter === 'MyPlans' && (
-                <Button 
+                <Button
                   variant={'gradient'}
                   onClick={handleCreateClick}
                   size="lg"
@@ -506,7 +506,7 @@ export function MyTravelPlans() {
                   <Plus className="w-5 h-5 mr-2" /> Create Your First Plan
                 </Button>
               )}
-            
+
             </div>
           </div>
         ) : (
@@ -515,12 +515,12 @@ export function MyTravelPlans() {
             <div className="mb-6 flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold text-stone-800">
-                  {filter === 'MyPlans' ? 'Your Travel Plans' : 
-                   filter === 'all' ? 'All Community Plans' : 
-                   `${filter.charAt(0).toUpperCase() + filter.slice(1)} Trips`}
+                  {filter === 'MyPlans' ? 'Your Travel Plans' :
+                    filter === 'all' ? 'All Community Plans' :
+                      `${filter.charAt(0).toUpperCase() + filter.slice(1)} Trips`}
                 </h3>
                 <p className="text-sm text-stone-500">
-                  {filter === 'MyPlans' 
+                  {filter === 'MyPlans'
                     ? `Manage and edit your personal travel plans (${userPlans.length} total)`
                     : `Discover travel plans from adventurers around the world`}
                 </p>
@@ -561,7 +561,7 @@ export function MyTravelPlans() {
                 <div className="text-sm text-stone-500">
                   Showing <span className="font-semibold text-stone-700">{(currentPage - 1) * ITEMS_PER_PAGE + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, filteredPlans.length)}</span> of <span className="font-semibold text-stone-700">{filteredPlans.length}</span> plans
                 </div>
-                
+
                 <div className="flex items-center gap-2">
                   {/* Previous Button */}
                   <Button
@@ -588,11 +588,10 @@ export function MyTravelPlans() {
                           variant={currentPage === pageNumber ? "default" : "outline"}
                           size="sm"
                           onClick={() => handlePageChange(pageNumber as number)}
-                          className={`w-10 h-10 font-medium ${
-                            currentPage === pageNumber 
-                              ? 'bg-orange-600 hover:bg-orange-700 text-white border-orange-600' 
+                          className={`w-10 h-10 font-medium ${currentPage === pageNumber
+                              ? 'bg-orange-600 hover:bg-orange-700 text-white border-orange-600'
                               : 'border-stone-300 hover:bg-stone-50 text-stone-700'
-                          }`}
+                            }`}
                         >
                           {pageNumber}
                         </Button>
@@ -645,16 +644,16 @@ export function MyTravelPlans() {
       </main>
 
       {/* Modals & Dialogs */}
-      <Modal 
-        isOpen={isFormOpen} 
-        onClose={() => !isSubmitting && setIsFormOpen(false)} 
+      <Modal
+        isOpen={isFormOpen}
+        onClose={() => !isSubmitting && setIsFormOpen(false)}
         title={editingPlan ? 'Edit Travel Plan' : 'Create New Travel Plan'}
       >
-        <TravelPlanForm 
-          initialData={editingPlan} 
-          onSubmit={handleFormSubmit} 
-          onCancel={() => setIsFormOpen(false)} 
-          isSubmitting={isSubmitting} 
+        <TravelPlanForm
+          initialData={editingPlan}
+          onSubmit={handleFormSubmit}
+          onCancel={() => setIsFormOpen(false)}
+          isSubmitting={isSubmitting}
         />
       </Modal>
 

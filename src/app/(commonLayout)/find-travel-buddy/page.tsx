@@ -1,4 +1,4 @@
-import FindTravelBuddyComponents from "@/components/find-buddy/find-travel-buddy-components";
+import FindTravelBuddyComponents from "@/components/modules/find-buddy/find-travel-buddy-components";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {

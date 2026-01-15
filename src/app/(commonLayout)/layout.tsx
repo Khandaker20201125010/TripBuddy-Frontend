@@ -15,7 +15,7 @@ const commonLayout = ({ children }: { children: React.ReactNode }) => {
             </div>
 
             {/* Main Content Area */}
-            <main className="min-h-screen font-display max-w-[1440px] mx-auto ">
+            <main className="min-h-screen font-display max-w-[1440px] mx-auto bg-(--color-warm-white)">
                 {children}
             </main>
 

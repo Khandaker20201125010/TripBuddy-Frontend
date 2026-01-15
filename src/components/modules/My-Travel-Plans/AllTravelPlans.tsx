@@ -6,11 +6,11 @@ import { Plus, Plane } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { TravelPlan, TravelPlanFormData, TravelStatus } from '@/types/travel'
 import { useMyTravelPlans } from '@/hooks/travelshooks/useMyTravelPlans'
-import { getPlanStatus } from '../shared/getPlanStatus'
+import { getPlanStatus } from '../../shared/getPlanStatus'
 import { TravelPlanCard } from './TravelPlanCard'
 import { PlanFilters } from './PlanFilters'
-import { Button } from '../ui/button'
-import { Modal } from '../ui/Modal'
+import { Button } from '../../ui/button'
+import { Modal } from '../../ui/Modal'
 import { TravelPlanForm } from './TravelPlanForm'
 import { DeleteConfirmDialog } from './DeleteConfirmDialog'
 
@@ -83,7 +83,7 @@ export function MyTravelPlans() {
       <Modal isOpen={isFormOpen} onClose={() => !isSubmitting && setIsFormOpen(false)} title={editingPlan ? 'Edit Plan' : 'New Plan'}>
         <TravelPlanForm initialData={editingPlan} onSubmit={handleFormSubmit} onCancel={() => setIsFormOpen(false)} isSubmitting={isSubmitting} />
       </Modal>
-      <DeleteConfirmDialog isOpen={!!deletingPlan} onClose={() => setDeletingPlan(null)} onConfirm={async () => { if(deletingPlan){ await deletePlan(deletingPlan.id); setDeletingPlan(null); }}} planName={deletingPlan?.destination || ''} isDeleting={isSubmitting} />
+      <DeleteConfirmDialog isOpen={!!deletingPlan} onClose={() => setDeletingPlan(null)} onConfirm={async () => { if (deletingPlan) { await deletePlan(deletingPlan.id); setDeletingPlan(null); } }} planName={deletingPlan?.destination || ''} isDeleting={isSubmitting} />
     </div>
   )
 }

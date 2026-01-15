@@ -1,9 +1,9 @@
 'use client';
 import { useState } from 'react'
 import { TravelPlan, TravelPlanFormData } from '@/types/travel'
-import { Button } from '../ui/button'
-import { Input } from '../ui/input'
-import { Label } from '../ui/label'
+import { Button } from '../../ui/button'
+import { Input } from '../../ui/input'
+import { Label } from '../../ui/label'
 import { Image as ImageIcon, X, Upload } from 'lucide-react'
 import Image from 'next/image'
 
@@ -38,7 +38,7 @@ export function TravelPlanForm({
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target
-        
+
         if (type === 'number') {
             setFormData(prev => ({ ...prev, [name]: parseFloat(value) || 0 }))
         } else {
@@ -64,7 +64,7 @@ export function TravelPlanForm({
         }
 
         setSelectedImage(file)
-        
+
         // Create preview
         const reader = new FileReader()
         reader.onloadend = () => {
@@ -80,12 +80,12 @@ export function TravelPlanForm({
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
-        
+
         const submitData: TravelPlanFormData = {
             ...formData,
             image: selectedImage || undefined
         }
-        
+
         onSubmit(submitData)
     }
 
@@ -114,7 +114,7 @@ export function TravelPlanForm({
                             </button>
                         </div>
                     )}
-                    
+
                     {/* Upload Area */}
                     <div className="relative">
                         <input
@@ -155,12 +155,12 @@ export function TravelPlanForm({
             {/* Destination */}
             <div className="space-y-2">
                 <Label htmlFor="destination">Destination *</Label>
-                <Input 
-                    id="destination" 
-                    name="destination" 
-                    value={formData.destination} 
-                    onChange={handleChange} 
-                    required 
+                <Input
+                    id="destination"
+                    name="destination"
+                    value={formData.destination}
+                    onChange={handleChange}
+                    required
                     placeholder="e.g., Paris, France"
                 />
             </div>
@@ -169,24 +169,24 @@ export function TravelPlanForm({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <Label htmlFor="startDate">Start Date *</Label>
-                    <Input 
-                        id="startDate" 
-                        type="date" 
-                        name="startDate" 
-                        value={formData.startDate} 
-                        onChange={handleChange} 
-                        required 
+                    <Input
+                        id="startDate"
+                        type="date"
+                        name="startDate"
+                        value={formData.startDate}
+                        onChange={handleChange}
+                        required
                     />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="endDate">End Date *</Label>
-                    <Input 
-                        id="endDate" 
-                        type="date" 
-                        name="endDate" 
-                        value={formData.endDate} 
-                        onChange={handleChange} 
-                        required 
+                    <Input
+                        id="endDate"
+                        type="date"
+                        name="endDate"
+                        value={formData.endDate}
+                        onChange={handleChange}
+                        required
                     />
                 </div>
             </div>
@@ -194,12 +194,12 @@ export function TravelPlanForm({
             {/* Budget */}
             <div className="space-y-2">
                 <Label htmlFor="budget">Budget ($)</Label>
-                <Input 
-                    id="budget" 
-                    type="number" 
-                    name="budget" 
-                    value={formData.budget} 
-                    onChange={handleChange} 
+                <Input
+                    id="budget"
+                    type="number"
+                    name="budget"
+                    value={formData.budget}
+                    onChange={handleChange}
                     min="0"
                     step="0.01"
                     placeholder="0.00"
@@ -230,12 +230,12 @@ export function TravelPlanForm({
             {/* Description */}
             <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
-                <textarea 
-                    id="description" 
-                    name="description" 
-                    value={formData.description} 
-                    onChange={handleChange} 
-                    className="w-full border border-stone-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-400" 
+                <textarea
+                    id="description"
+                    name="description"
+                    value={formData.description}
+                    onChange={handleChange}
+                    className="w-full border border-stone-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-400"
                     rows={4}
                     placeholder="Tell us about your travel plans..."
                 />
@@ -261,17 +261,17 @@ export function TravelPlanForm({
 
             {/* Form Actions */}
             <div className="flex justify-end gap-3 pt-4 border-t border-stone-200">
-                <Button 
-                    type="button" 
-                    variant="outline" 
+                <Button
+                    type="button"
+                    variant="outline"
                     onClick={onCancel}
                     disabled={isSubmitting}
                 >
                     Cancel
                 </Button>
-                <Button 
-                    variant="gradient" 
-                    type="submit" 
+                <Button
+                    variant="gradient"
+                    type="submit"
                     disabled={isSubmitting}
                     className="min-w-[120px]"
                 >

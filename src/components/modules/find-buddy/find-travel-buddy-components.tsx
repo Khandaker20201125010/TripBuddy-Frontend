@@ -3,9 +3,9 @@
 
 import { useState } from "react";
 import { Plane, Users, Sparkles, MapPin, Calendar, TrendingUp } from "lucide-react";
-import { BuddyFilters } from "@/components/find-buddy/BuddyFilters";
-import { MatchedTravelGrid } from "@/components/find-buddy/MatchedTravelGrid";
-import { PremiumCTA } from "@/components/find-buddy/PremiumCTA";
+import { BuddyFilters } from "@/components/modules/find-buddy/BuddyFilters";
+import { MatchedTravelGrid } from "@/components/modules/find-buddy/MatchedTravelGrid";
+import { PremiumCTA } from "@/components/modules/find-buddy/PremiumCTA";
 import { useMatchedTravelPlans } from "@/hooks/travelshooks/useMatchedTravelPlans";
 import { useTravelStats } from "@/hooks/travelshooks/useTravelStats";
 import { Button } from "@/components/ui/button";

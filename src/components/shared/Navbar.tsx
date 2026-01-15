@@ -25,6 +25,7 @@ const loggedInNavLinks = [
   { name: 'Home', href: '/' },
   { name: 'Explore Travelers', href: '/explore-travelers' },
   { name: 'Travel Plans', href: '/my-travel-plans' },
+  { name: 'Community', href: '/community' },
 ]
 
 const loggedInAdminNavLinks = [

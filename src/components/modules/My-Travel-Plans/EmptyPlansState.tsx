@@ -1,6 +1,6 @@
 
 import { Map, Plus } from 'lucide-react'
-import { Button } from '../ui/button'
+import { Button } from '../../ui/button'
 
 interface EmptyPlansStateProps {
   onAddPlan: () => void

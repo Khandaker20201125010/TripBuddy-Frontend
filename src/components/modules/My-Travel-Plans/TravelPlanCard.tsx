@@ -3,8 +3,8 @@
 
 import { TravelPlan } from '@/types/travel'
 import { Calendar, DollarSign, MapPin, Edit2, Trash2, Eye, User, Image as ImageIcon } from 'lucide-react'
-import { Badge } from '../ui/badge'
-import { Button } from '../ui/button'
+import { Badge } from '../../ui/badge'
+import { Button } from '../../ui/button'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useState } from 'react'
@@ -19,14 +19,14 @@ interface Props {
 export function TravelPlanCard({ plan, isOwner, onEdit, onDelete }: Props) {
   const userName = plan.user?.name || 'Unknown User'
   const [imageError, setImageError] = useState(false)
-  
+
   // Format dates nicely
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: 'numeric' 
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
     })
   }
 
@@ -52,7 +52,7 @@ export function TravelPlanCard({ plan, isOwner, onEdit, onDelete }: Props) {
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col h-full group">
-      
+
       {/* Image Section */}
       <div className="relative h-48 w-full overflow-hidden bg-gradient-to-br from-gray-50 to-amber-50">
         {plan.image && !imageError ? (
@@ -78,14 +78,14 @@ export function TravelPlanCard({ plan, isOwner, onEdit, onDelete }: Props) {
             <p className="text-xs text-gray-400 mt-1">{plan.destination}</p>
           </div>
         )}
-        
+
         {/* Status Badge */}
         <div className="absolute top-3 left-3">
           <Badge variant={getStatusVariant()} className="font-medium capitalize shadow-sm">
             {plan.status}
           </Badge>
         </div>
-        
+
         {/* Owner Badge */}
         {isOwner && (
           <div className="absolute top-3 right-3">
@@ -98,14 +98,14 @@ export function TravelPlanCard({ plan, isOwner, onEdit, onDelete }: Props) {
 
       {/* Content Section */}
       <div className="p-5 flex flex-col flex-grow">
-        
+
         {/* Destination Header */}
         <div className="mb-4">
           <h3 className="font-bold text-lg flex items-center text-gray-900 mb-2">
             <MapPin className="w-5 h-5 mr-2 text-amber-600 flex-shrink-0" />
             <span className="truncate">{plan.destination}</span>
           </h3>
-          
+
           {/* User Info */}
           <div className="flex items-center text-sm text-gray-600">
             <User className="w-4 h-4 mr-1 text-gray-400" />
@@ -117,7 +117,7 @@ export function TravelPlanCard({ plan, isOwner, onEdit, onDelete }: Props) {
 
         {/* Details Section */}
         <div className="text-sm text-gray-600 space-y-3 grow">
-          
+
           {/* Dates */}
           <div className="flex items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
             <Calendar className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" />
@@ -150,11 +150,11 @@ export function TravelPlanCard({ plan, isOwner, onEdit, onDelete }: Props) {
 
         {/* Action Buttons */}
         <div className="flex items-center justify-between gap-2 mt-6 pt-4 border-t border-gray-100">
-          
+
           {/* View Details Button */}
           <Link href={`/my-travel-plans/${plan.id}`} className="flex-1">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="w-full text-sm border-gray-300 hover:border-gray-400 hover:bg-gray-50"
             >
               <Eye className="w-4 h-4 mr-2" />
@@ -165,19 +165,19 @@ export function TravelPlanCard({ plan, isOwner, onEdit, onDelete }: Props) {
           {/* Edit/Delete Buttons (Owner only) */}
           {isOwner && onEdit && onDelete && (
             <div className="flex gap-2">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => onEdit(plan)} 
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onEdit(plan)}
                 className="hover:bg-amber-50 hover:text-amber-600 border border-gray-200"
                 title="Edit plan"
               >
                 <Edit2 className="w-4 h-4" />
               </Button>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => onDelete(plan)} 
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onDelete(plan)}
                 className="hover:bg-red-50 hover:text-red-600 border border-gray-200"
                 title="Delete plan"
               >
