@@ -41,7 +41,7 @@ export function Testimonials() {
     if (!mounted) return null
 
     return (
-        <section className="py-24 bg-slate-50 overflow-hidden">
+        <section className="py-24 overflow-hidden">
             <div className="max-w-7xl mx-auto px-6">
                 <div className="text-center mb-16">
                     <h2 className="text-4xl font-bold text-gray-900 mb-4 tracking-tight">Adventures Made Together</h2>
