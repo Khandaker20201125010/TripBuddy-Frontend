@@ -290,7 +290,7 @@ export function PhotoUpload({ onSuccess }: PhotoUploadProps) {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="px-6 py-2 bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-full hover:shadow-lg"
+                className="px-6 py-2 gradient-sunset text-white rounded-full hover:shadow-lg"
               >
                 View Post
               </motion.button>
@@ -366,7 +366,7 @@ export function PhotoUpload({ onSuccess }: PhotoUploadProps) {
                 <motion.div
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="mt-4 px-6 py-3 bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-full font-medium inline-flex items-center gap-2 shadow-lg shadow-orange-500/25"
+                  className="cursor-pointer mt-4 px-6 py-3 gradient-sunset text-white rounded-full font-medium inline-flex items-center gap-2 shadow-lg shadow-orange-500/25"
                 >
                   <Camera className="w-5 h-5" />
                   Select Photos
@@ -570,7 +570,7 @@ export function PhotoUpload({ onSuccess }: PhotoUploadProps) {
                         type="button"
                         onClick={addTag}
                         disabled={uploading || !tagInput.trim()}
-                        className="px-4 py-3 bg-gradient-to-r from-orange-100 to-pink-100 text-orange-700 rounded-xl hover:from-orange-200 hover:to-pink-200 disabled:opacity-50 transition-all"
+                        className="cursor-pointer px-4 py-3 bg-gradient-to-r from-orange-100 to-pink-100 text-orange-700 rounded-xl hover:from-orange-200 hover:to-pink-200 disabled:opacity-50 transition-all"
                       >
                         Add
                       </motion.button>
@@ -587,7 +587,7 @@ export function PhotoUpload({ onSuccess }: PhotoUploadProps) {
                             <button
                               type="button"
                               onClick={() => removeTag(tag)}
-                              className="hover:text-orange-900"
+                              className="hover:text-orange-900 cursor-pointer"
                               disabled={uploading}
                             >
                               <X className="w-3 h-3" />
@@ -638,7 +638,7 @@ export function PhotoUpload({ onSuccess }: PhotoUploadProps) {
                       whileTap={{ scale: 0.95 }}
                       onClick={clearAll}
                       disabled={uploading}
-                      className="px-6 py-3 border border-stone-300 text-stone-700 rounded-full hover:bg-stone-50 transition-colors disabled:opacity-50 font-medium"
+                      className="cursor-pointer px-6 py-3 border border-stone-300 text-stone-700 rounded-full hover:bg-stone-50 transition-colors disabled:opacity-50 font-medium"
                     >
                       Cancel All
                     </motion.button>
@@ -647,7 +647,7 @@ export function PhotoUpload({ onSuccess }: PhotoUploadProps) {
                       whileTap={uploading ? {} : { scale: 0.95 }}
                       onClick={handleShare}
                       disabled={uploading || photos.length === 0}
-                      className="px-8 py-3 bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-full font-medium hover:shadow-lg hover:shadow-orange-500/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      className="cursor-pointer px-8 py-3 gradient-sunset text-white rounded-full font-medium hover:shadow-lg hover:shadow-orange-500/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     >
                       {uploading ? (
                         <>

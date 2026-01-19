@@ -80,13 +80,13 @@ export function Footer() {
 
             <div className="flex flex-wrap justify-center gap-4">
               <Link href="/register">
-                <button className="px-8 py-4 bg-gradient-to-r from-orange-500 to-pink-500 text-white font-semibold rounded-full shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 transition-all duration-300">
+                <button className="cursor-pointer px-8 py-4  gradient-sunset text-white font-semibold rounded-full shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 transition-all duration-300">
                   Start Your Journey Free
                 </button>
               </Link>
 
               <Link href="/find-travel-buddy">
-                <button className="px-8 py-4 bg-transparent border-2 border-white/30 text-white font-semibold rounded-full hover:bg-white/10 transition-all duration-300">
+                <button className="cursor-pointer px-8 py-4 bg-transparent border-2 border-white/30 text-white font-semibold rounded-full hover:bg-white/10 transition-all duration-300">
                   Explore Travelers
                 </button>
               </Link>
@@ -101,7 +101,7 @@ export function Footer() {
           {/* Brand */}
           <div className="col-span-2 lg:col-span-2">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-pink-500 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl gradient-sunset flex items-center justify-center">
                 <MapPinIcon className="w-5 h-5 text-white" />
               </div>
               <span className="font-display text-xl font-bold">

@@ -19,7 +19,7 @@ export const adminProtectedRoutes: RouteConfig = {
     exact: [], 
 }
 export const userProtectedRoutes: RouteConfig = {
-    patterns: [/^\/dashboard/,/^\/my-travel-plans/,/^\/manage-requests/], 
+    patterns: [/^\/dashboard/,/^\/my-travel-plans/,/^\/manage-requests/,/^\/community/], 
     exact: [], 
 }
 

@@ -1,7 +1,9 @@
-import { Metadata } from 'next'
-import { JobListings } from '@/components/careers/JobListings'
+/* eslint-disable react/no-unescaped-entities */
 import { BenefitsSection } from '@/components/careers/BenefitsSection'
 import { CultureSection } from '@/components/careers/CultureSection'
+import { JobListings } from '@/components/careers/JobListings'
+import { Metadata } from 'next'
+
 
 export const metadata: Metadata = {
   title: 'Careers | Travel Buddy',

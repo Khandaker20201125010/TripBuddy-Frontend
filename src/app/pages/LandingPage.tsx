@@ -5,6 +5,8 @@ import { Hero } from '@/components/modules/home/Hero';
 import { HowItWorks } from '@/components/modules/home/HowItWorks';
 import { Pricing } from '@/components/modules/home/Pricing';
 import { Testimonials } from '@/components/modules/home/Testimonials';
+import { TravelTypes } from '@/components/modules/home/TravelTypes';
+import { WhyChooseUs } from '@/components/modules/home/WhyChooseUs';
 
 
 const LandingPage = () => {
@@ -12,7 +14,9 @@ const LandingPage = () => {
         <div>
             <Hero />
             <HowItWorks />
+             <TravelTypes />
             <AIFeature />
+             <WhyChooseUs />
             <Destinations />
             <Testimonials />
             <div >

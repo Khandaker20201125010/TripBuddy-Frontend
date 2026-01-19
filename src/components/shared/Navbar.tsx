@@ -3,7 +3,21 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bell, MapPin, Menu, X, Shield, LogOut, LayoutDashboard } from 'lucide-react'
+import { 
+  Bell, 
+  MapPin, 
+  Menu, 
+  X, 
+  Shield, 
+  LogOut, 
+  LayoutDashboard,
+  Home,
+  Users,
+  Compass,
+  Calendar,
+  MessageCircle,
+  Mail
+} from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
@@ -14,23 +28,35 @@ import { useNotifications } from '@/hooks/connections/useNotifications'
 import NotificationPanel from '../NotificationIcon/NotificationPanel'
 import { NavbarAvatar } from '../ui/NavbarAvatar'
 
+// Icon mappings for nav links
+const iconMap: Record<string, React.ReactNode> = {
+  'Home': <Home className="h-5 w-5" />,
+  'Explore Travelers': <Users className="h-5 w-5" />,
+  'Find Travel Buddy': <Compass className="h-5 w-5" />,
+  'Travel Plans': <Calendar className="h-5 w-5" />,
+  'Community': <MessageCircle className="h-5 w-5" />,
+  'Contact': <Mail className="h-5 w-5" />,
+  'Dashboard': <LayoutDashboard className="h-5 w-5" />
+}
 
 const loggedOutNavLinks = [
-  { name: 'Home', href: '/' },
-  { name: 'Explore Travelers', href: '/explore-travelers' },
-  { name: 'Find Travel Buddy', href: '/find-travel-buddy' },
+  { name: 'Home', href: '/', icon: 'Home' },
+  { name: 'Explore Travelers', href: '/explore-travelers', icon: 'Explore Travelers' },
+  { name: 'Find Travel Buddy', href: '/find-travel-buddy', icon: 'Find Travel Buddy' },
+  { name: 'Contact', href: '/contact', icon: 'Contact' }
 ]
 
 const loggedInNavLinks = [
-  { name: 'Home', href: '/' },
-  { name: 'Explore Travelers', href: '/explore-travelers' },
-  { name: 'Travel Plans', href: '/my-travel-plans' },
-  { name: 'Community', href: '/community' },
+  { name: 'Home', href: '/', icon: 'Home' },
+  { name: 'Explore Travelers', href: '/explore-travelers', icon: 'Explore Travelers' },
+  { name: 'Travel Plans', href: '/my-travel-plans', icon: 'Travel Plans' },
+  { name: 'Community', href: '/community', icon: 'Community' },
+  { name: 'Contact', href: '/contact', icon: 'Contact' }
 ]
 
 const loggedInAdminNavLinks = [
-  { name: 'Home', href: '/' },
-  { name: 'Dashboard', href: '/adminDashboard/adminProfile' },
+  { name: 'Home', href: '/', icon: 'Home' },
+  { name: 'Dashboard', href: '/adminDashboard/adminProfile', icon: 'Dashboard' },
 ]
 
 export function Navbar() {
@@ -40,8 +66,10 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [hoveredLink, setHoveredLink] = useState<string | null>(null)
   const notificationRef = useRef<HTMLDivElement>(null)
   const userMenuRef = useRef<HTMLDivElement>(null)
+  const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Get notifications with proper authentication check
   const { totalNotifications, isAuthenticated: notificationsAuthenticated } = useNotifications();
@@ -115,6 +143,32 @@ export function Navbar() {
     return pathname.startsWith(href)
   }
 
+  // Handle hover with delay for tooltip
+  const handleMouseEnter = (linkName: string) => {
+    if (tooltipTimeoutRef.current) {
+      clearTimeout(tooltipTimeoutRef.current);
+    }
+    tooltipTimeoutRef.current = setTimeout(() => {
+      setHoveredLink(linkName);
+    }, 200);
+  };
+
+  const handleMouseLeave = () => {
+    if (tooltipTimeoutRef.current) {
+      clearTimeout(tooltipTimeoutRef.current);
+    }
+    setHoveredLink(null);
+  };
+
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (tooltipTimeoutRef.current) {
+        clearTimeout(tooltipTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // User menu items for dropdown (desktop only)
   const userMenuItems = [
     {
@@ -167,32 +221,71 @@ export function Navbar() {
 
             {/* DESKTOP NAV LINKS - Center */}
             <div className="hidden md:flex items-center justify-center flex-1 max-w-2xl mx-8">
-              <div className="flex items-center gap-6 lg:gap-8">
+              <div className="flex items-center gap-6 lg:gap-7">
                 {currentNavLinks.map((link) => {
-                  const active = isActive(link.href)
+                  const active = isActive(link.href);
+                  const IconComponent = iconMap[link.icon] || iconMap['Home'];
+                  
                   return (
-                    <Link
-                      key={link.name}
-                      href={link.href}
-                      className={`
-                        relative font-medium transition-colors text-sm lg:text-base
-                        ${active
-                          ? isAdmin
-                            ? 'text-purple-600'
-                            : 'text-(--color-coral)'
-                          : 'text-(--color-charcoal)/70 hover:text-(--color-coral)'
-                        }
-                      `}
-                    >
-                      {link.name}
-                      {active && (
-                        <span
-                          className={`absolute -bottom-1 left-0 right-0 h-0.5 rounded-full ${isAdmin ? 'bg-purple-600' : 'bg-(--color-coral)'
-                            }`}
-                        />
+                    <div key={link.name} className="relative">
+                      {/* For medium screens (768px to 1024px) show icons only */}
+                      <Link
+                        href={link.href}
+                        className={`
+                          hidden md:flex lg:hidden items-center justify-center
+                          relative font-medium transition-colors p-2 rounded-lg
+                          ${active
+                            ? isAdmin
+                              ? 'text-purple-600 bg-purple-50'
+                              : 'text-(--color-coral) bg-(--color-coral)/10'
+                            : 'text-(--color-charcoal)/70 hover:text-(--color-coral) hover:bg-stone-50'
+                          }
+                        `}
+                        onMouseEnter={() => handleMouseEnter(link.name)}
+                        onMouseLeave={handleMouseLeave}
+                      >
+                        {IconComponent}
+                      </Link>
+
+                      {/* For large screens (1024px and above) show text */}
+                      <Link
+                        href={link.href}
+                        className={`
+                          hidden lg:flex items-center
+                          relative font-medium transition-colors text-base
+                          ${active
+                            ? isAdmin
+                              ? 'text-purple-600'
+                              : 'text-(--color-coral)'
+                            : 'text-(--color-charcoal)/70 hover:text-(--color-coral)'
+                          }
+                        `}
+                      >
+                        {link.name}
+                        {active && (
+                          <span
+                            className={`absolute -bottom-1 left-0 right-0 h-0.5 rounded-full ${isAdmin ? 'bg-purple-600' : 'bg-(--color-coral)'
+                              }`}
+                          />
+                        )}
+                      </Link>
+
+                      {/* Orange tooltip for medium screens */}
+                      {hoveredLink === link.name && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 5 }}
+                          className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 hidden md:block lg:hidden z-50"
+                        >
+                          <div className="bg-gradient-to-r from-orange-500 to-(--color-coral) text-white text-xs font-medium px-3 py-1.5 rounded-md whitespace-nowrap shadow-lg">
+                            {link.name}
+                            <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gradient-to-r from-orange-500 to-(--color-coral) rotate-45" />
+                          </div>
+                        </motion.div>
                       )}
-                    </Link>
-                  )
+                    </div>
+                  );
                 })}
               </div>
             </div>
@@ -372,13 +465,15 @@ export function Navbar() {
               <div className="px-4 pt-2 pb-4 space-y-1">
                 {currentNavLinks.map((link) => {
                   const active = isActive(link.href)
+                  const IconComponent = iconMap[link.icon] || iconMap['Home'];
+                  
                   return (
                     <Link
                       key={link.name}
                       href={link.href}
                       onClick={() => setIsOpen(false)}
                       className={`
-                        flex items-center px-4 py-3 rounded-lg font-medium transition-colors
+                        flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors
                         ${active
                           ? isAdmin
                             ? 'bg-purple-50 text-purple-600'
@@ -387,10 +482,13 @@ export function Navbar() {
                         }
                       `}
                     >
-                      {link.name}
+                      <span className="text-stone-400">
+                        {IconComponent}
+                      </span>
+                      <span>{link.name}</span>
                       {active && (
                         <div
-                          className={`ml-2 h-1.5 w-1.5 rounded-full ${isAdmin ? 'bg-purple-600' : 'bg-(--color-coral)'
+                          className={`ml-auto h-1.5 w-1.5 rounded-full ${isAdmin ? 'bg-purple-600' : 'bg-(--color-coral)'
                             }`}
                         />
                       )}
